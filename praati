@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.5 2014/02/23 19:25:43 je Exp $
+# $Id: praati,v 1.6 2014/02/23 19:53:32 je Exp $
 
 =pod
 
@@ -174,30 +174,75 @@ package Praati::Controller {
     }
   }
 
+  sub redirect {
+    my ($path) = @_;
+    response(redirect_uri => ($Q->url . $path),
+             status       => 301);
+  }
+
   sub response { Praati::Controller::Response->new(@_); }
 
   sub url_dispatch {
     my ($path_info) = @_;
 
-    my $page = $Q->start_html
-             . "Hello, world\n"
-             . $Q->end_html;
+    local $_ = $path_info;
 
-    response(page => $page);
+    (
+      m|^$|          ? redirect('/new_user') :
+      m|^/$|         ? redirect('/new_user') :
+      m|^/new_user$| ? page_new_user()       :
+
+        no_such_page()
+    );
+  }
+
+  # pages
+
+  sub no_such_page {
+    response(page   => 'No such page.',
+             status => 404);
+  }
+
+  sub page_new_user {
+    response(page => 'Create new user.');
   }
 }
 
 package Praati::Controller::Response {
   Praati->import;
 
-  use Class::Struct;
-  struct(code => '$', page => '$', redirect => '$');
+  use Class::Struct __PACKAGE__, {
+    page         => '$',
+    redirect_uri => '$',
+    status       => '$',
+  };
 
   sub print {
     my ($self, $q) = @_;
 
-    print $q->header,
-          $self->page;
+    my $content
+      = defined($self->redirect_uri)
+          ? $q->redirect(-status => $self->status,
+                         -uri    => $self->redirect_uri)
+          :
+        defined($self->page)
+          ? $self->page_with_header($q)
+          : undef;
+
+    die 'Not a sensible response object' unless defined $content;
+
+    print $content;
+  }
+
+  sub page_with_header {
+    my ($self, $q) = @_;
+
+    my @header_args = defined($self->status)
+                        ? (-status => $self->status)
+                        : ();
+
+    $q->header(@header_args)
+    . $self->page;
   }
 }
 
