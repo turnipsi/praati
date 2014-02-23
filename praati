@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.2 2014/02/23 15:55:38 je Exp $
+# $Id: praati,v 1.3 2014/02/23 16:13:47 je Exp $
 
 use autodie;
 use diagnostics;
@@ -10,11 +10,46 @@ use warnings FATAL => qw(all);
 
 
 #
+# configurations
+#
+
+package Praati::Config {
+  our $WWW_DIR = '/'; # XXX in OpenBSD Apache chroot only...
+
+  our $DB_DIR       = 'db';
+  our $DB_FILE_PATH = "${WWW_DIR}/${DB_DIR}/praati.sqlite3";
+
+  our $MUSIC_PATH = "${DB_DIR}/music";
+}
+
+
+#
 # model
 #
 
 package Praati::Model {
+  use DBI;
 
+  our $DB;
+
+  sub init {
+    my %attrs = (
+      AutoCommit                       => 1,
+      PrintError                       => 0, 
+      RaiseError                       => 1,
+      sqlite_allow_multiple_statements => 1,
+    );
+    $DB = DBI->connect("dbi:SQLite:dbname=${Praati::Config::DB_FILE_PATH}",
+		       '',
+		       '',
+		       \%attrs);
+
+    $DB->do('PRAGMA foreign_keys = ON');
+  }
+
+  sub close {
+    if ($DB) { $DB->disconnect(); }
+  }
 }
 
 
@@ -37,12 +72,23 @@ package Praati::Controller {
   our $Q;
 
   sub main {
-    $Q = CGI->new;
+    $Q = CGI->new();
 
-    print $Q->header,
-          $Q->start_html,
-          $Q->p('hello'),
-          $Q->end_html;
+    eval {
+      Praati::Model::init();
+
+      print $Q->header(),
+	    $Q->start_html(),
+	    $Q->p('hello'),
+	    $Q->end_html();
+    };
+    my $error = $@;
+
+    Praati::Model::close();
+
+    if ($error) {
+      die $error;
+    }
   }
 }
 
