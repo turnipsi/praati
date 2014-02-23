@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.1 2014/02/23 15:48:04 je Exp $
+# $Id: praati,v 1.2 2014/02/23 15:55:38 je Exp $
 
 use autodie;
 use diagnostics;
@@ -8,8 +8,45 @@ use strict;
 use utf8;
 use warnings FATAL => qw(all);
 
-use CGI;
 
-my $q = CGI->new();
+#
+# model
+#
 
-print $q->header;
+package Praati::Model {
+
+}
+
+
+#
+# view
+#
+
+package Praati::View {
+
+}
+
+
+#
+# controller
+#
+
+package Praati::Controller {
+  use CGI;
+
+  our $Q;
+
+  sub main {
+    $Q = CGI->new;
+
+    print $Q->header,
+          $Q->start_html,
+          $Q->p('hello'),
+          $Q->end_html;
+  }
+}
+
+
+package main {
+  Praati::Controller::main(); 
+}
