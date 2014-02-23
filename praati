@@ -1,0 +1,15 @@
+#!/usr/bin/perl -T
+# -*- mode: perl; coding: utf-8; -*'
+# $Id: praati,v 1.1 2014/02/23 15:48:04 je Exp $
+
+use autodie;
+use diagnostics;
+use strict;
+use utf8;
+use warnings FATAL => qw(all);
+
+use CGI;
+
+my $q = CGI->new();
+
+print $q->header;
