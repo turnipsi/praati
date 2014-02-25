@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.7 2014/02/25 19:35:55 je Exp $
+# $Id: praati,v 1.8 2014/02/25 20:11:53 je Exp $
 
 =pod
 
@@ -17,7 +17,7 @@ A sample Apache configuration:
     PerlSendHeader On
     PerlModule autodie       \
                diagnostics   \
-               CGI           \
+               CGI::Pretty   \
                Class::Struct \
                Data::Dumper  \
                DBD::SQLite   \
@@ -63,6 +63,19 @@ package Praati::Config {
   our $DB_FILE_PATH = "${WWW_DIR}/${DB_DIR}/praati.sqlite3";
 
   our $MUSIC_PATH = "${DB_DIR}/music";
+}
+
+
+#
+# declarations (when imported into other namespaces)
+#
+
+package Praati::Controller {
+  use Exporter qw(import);
+  our @EXPORT = qw(html response);
+
+  sub html;
+  sub response;
 }
 
 
@@ -138,9 +151,63 @@ package Praati::Model::SQLite {
 # view
 #
 
+
 package Praati::View {
   Praati->import;
+  Praati::Controller->import;
 
+  BEGIN {
+    my @html_funcs = qw(end_html
+                        form
+                        password_field
+                        start_html
+                        submit
+                        table
+                        td
+                        textfield
+                        Tr);
+
+    foreach my $func (@html_funcs) {
+      no strict 'refs';
+      *$func = sub { html($func, @_); };
+    }
+  }
+
+  sub menu {
+    ''; # XXX
+  }
+
+  sub standard_page {
+    my ($content) = @_;
+
+    start_html()
+    . menu()
+    . $content
+    . end_html()
+    . "\n";
+  }
+
+  #
+  # pages
+  #
+
+  sub page_new_user {
+    my $tablerows = [
+      td([ 'email address:',  textfield('user_email')               ]),
+      td([ 'name:',           textfield('user_name')                ]),
+      td([ 'password:',       password_field('user_password')       ]),
+      td([ 'password again:', password_field('user_password_again') ]),
+      td({ -colspan => 2 },
+         submit(submit_new_user => 'Create new user')),
+    ];
+
+    my $page
+      = form({ -method => 'post' },
+          table(
+            Tr $tablerows));
+
+    response(page => standard_page($page));
+  }
 }
 
 
@@ -151,7 +218,9 @@ package Praati::View {
 package Praati::Controller {
   Praati->import;
 
-  use CGI;
+  use CGI::Pretty qw(-any);
+
+  $CGI::Pretty::INDENT = ' ' x 2;
 
   our $Q;
 
@@ -172,6 +241,11 @@ package Praati::Controller {
     if ($error) {
       die $error;
     }
+  }
+
+  sub html {
+    my $method = shift;
+    $Q->$method(@_);
   }
 
   sub redirect {
@@ -196,7 +270,9 @@ package Praati::Controller {
     );
   }
 
+  #
   # pages
+  #
 
   sub no_such_page {
     response(page   => 'No such page.',
@@ -204,7 +280,7 @@ package Praati::Controller {
   }
 
   sub page_new_user {
-    response(page => 'Create new user.');
+    Praati::View::page_new_user();
   }
 }
 
