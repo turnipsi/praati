@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.8 2014/02/25 20:11:53 je Exp $
+# $Id: praati,v 1.9 2014/02/25 20:16:39 je Exp $
 
 =pod
 
@@ -177,6 +177,8 @@ package Praati::View {
     ''; # XXX
   }
 
+  sub page { response(page => standard_page($_[0])); }
+
   sub standard_page {
     my ($content) = @_;
 
@@ -201,12 +203,10 @@ package Praati::View {
          submit(submit_new_user => 'Create new user')),
     ];
 
-    my $page
-      = form({ -method => 'post' },
-          table(
-            Tr $tablerows));
-
-    response(page => standard_page($page));
+    page(
+      form({ -method => 'post' },
+        table(
+          Tr $tablerows)));
   }
 }
 
