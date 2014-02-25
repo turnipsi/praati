@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.6 2014/02/23 19:53:32 je Exp $
+# $Id: praati,v 1.7 2014/02/25 19:35:55 je Exp $
 
 =pod
 
@@ -217,6 +217,17 @@ package Praati::Controller::Response {
     status       => '$',
   };
 
+  sub page_with_header {
+    my ($self, $q) = @_;
+
+    my @header_args = defined($self->status)
+                        ? (-status => $self->status)
+                        : ();
+
+    $q->header(@header_args)
+    . $self->page;
+  }
+
   sub print {
     my ($self, $q) = @_;
 
@@ -232,17 +243,6 @@ package Praati::Controller::Response {
     die 'Not a sensible response object' unless defined $content;
 
     print $content;
-  }
-
-  sub page_with_header {
-    my ($self, $q) = @_;
-
-    my @header_args = defined($self->status)
-                        ? (-status => $self->status)
-                        : ();
-
-    $q->header(@header_args)
-    . $self->page;
   }
 }
 
