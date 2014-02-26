@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.9 2014/02/25 20:16:39 je Exp $
+# $Id: praati,v 1.10 2014/02/26 20:46:54 je Exp $
 
 =pod
 
@@ -11,20 +11,22 @@ A sample Apache configuration:
 
   # XXX why does not Files or Location work?
   <Directory /users/*/praati>
-    SetHandler perl-script
-    PerlHandler Apache::PerlRun
     Options +ExecCGI
-    PerlSendHeader On
-    PerlModule autodie       \
-               diagnostics   \
-               CGI::Pretty   \
-               Class::Struct \
-               Data::Dumper  \
-               DBD::SQLite   \
-               DBI           \
-               Email::Valid  \
+    PerlHandler Apache::PerlRun
+    PerlModule autodie           \
+               diagnostics       \
+               CGI::Pretty       \
+               Class::Struct     \
+               Crypt::SaltedHash \
+               Data::Dumper      \
+               DBD::SQLite       \
+               DBI               \
+               Digest::SHA       \
+               Email::Valid      \
                POSIX
+    PerlSendHeader On
     PerlSetVar PerlRunOnce On
+    SetHandler perl-script
   </Directory>
 
 =cut
@@ -86,6 +88,7 @@ package Praati::Controller {
 package Praati::Model {
   Praati->import;
 
+  use Crypt::SaltedHash;
   use DBI;
   use Email::Valid;
 
@@ -128,12 +131,44 @@ package Praati::Model {
     });
   }
 
+  sub query {
+    my ($sql, @bind_values) = @_;
+    $DB->do($sql, undef, @bind_values);
+  }
+
   sub check_user_email {
     my ($email_address) = @_;
     Email::Valid->address($email_address) ? 1 : 0;
   }
 
-  sub query { $DB->do($_[0]); }
+  # XXX should you just use crypt instead?
+  # XXX are blowfish passwords portable?
+  # XXX how to generate salt for those?
+  sub crypt_password {
+    my ($password) = @_;
+    my $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
+    $csh->add($password);
+    $csh->generate;
+  }
+
+  sub add_new_user {
+    my ($user_email, $user_name, $user_password) = @_;
+
+    my $user_encrypted_password = crypt_password($user_password);
+    my $user_role = new_user_role();
+
+    query(q{
+      insert into users (user_email,
+                         user_encrypted_password,
+                         user_name,
+                         user_role)
+        values (?, ?, ?, ?);
+    }, $user_email, $user_encrypted_password, $user_name, $user_role);
+  }
+
+  sub new_user_role {
+    'admin'; # XXX
+  }
 }
 
 package Praati::Model::SQLite {
@@ -189,12 +224,25 @@ package Praati::View {
     . "\n";
   }
 
+  sub maybe_error {
+    my ($name, $errors, $colspan) = @_;
+
+    defined($errors->{ $name })
+      ? (td { -colspan => $colspan }, $errors->{ $name })
+      : ();
+  }
+
   #
   # pages
   #
 
   sub page_new_user {
+    my ($errors) = @_;
+
+    # XXX show errors
     my $tablerows = [
+      maybe_error('*' => $errors, 2),
+
       td([ 'email address:',  textfield('user_email')               ]),
       td([ 'name:',           textfield('user_name')                ]),
       td([ 'password:',       password_field('user_password')       ]),
@@ -264,23 +312,39 @@ package Praati::Controller {
     (
       m|^$|          ? redirect('/new_user') :
       m|^/$|         ? redirect('/new_user') :
-      m|^/new_user$| ? page_new_user()       :
+      m|^/new_user$| ? new_user_controller() :
 
         no_such_page()
     );
   }
 
   #
-  # pages
+  # controllers for pages
   #
+
+  sub new_user_controller {
+    my %p = $Q->Vars;
+    my $errors = {};
+
+    if ($p{submit_new_user}) {
+      # XXX should check that 'user_password' and 'user_password_again' match
+
+      eval {
+        Praati::Model::add_new_user(@p{ qw(user_email
+                                           user_name
+                                           user_password) });
+      };
+      return redirect('/login') unless $@;
+
+      $errors->{'*'} = $@; # XXX these should be handled properly
+    }
+
+    Praati::View::page_new_user($errors);
+  }
 
   sub no_such_page {
     response(page   => 'No such page.',
              status => 404);
-  }
-
-  sub page_new_user {
-    Praati::View::page_new_user();
   }
 }
 
