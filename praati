@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.10 2014/02/26 20:46:54 je Exp $
+# $Id: praati,v 1.11 2014/02/27 20:15:42 je Exp $
 
 =pod
 
@@ -110,6 +110,8 @@ package Praati::Model {
 
     Praati::Model::SQLite::register_sqlite_functions();
 
+    debug_query();
+
     create_db_tables();
   }
 
@@ -134,6 +136,16 @@ package Praati::Model {
   sub query {
     my ($sql, @bind_values) = @_;
     $DB->do($sql, undef, @bind_values);
+  }
+
+  sub records {
+    my ($key, $sql, @bind_values) = @_;
+    $DB->selectall_hashref($sql, $key, undef, @bind_values);
+  }
+
+  sub rows {
+    my ($sql, @bind_values) = @_;
+    $DB->selectall_arrayref($sql, undef, @bind_values);
   }
 
   sub check_user_email {
@@ -168,6 +180,10 @@ package Praati::Model {
 
   sub new_user_role {
     'admin'; # XXX
+  }
+
+  sub debug_query {
+    # warn d(rows('select * from users'));
   }
 }
 
