@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.11 2014/02/27 20:15:42 je Exp $
+# $Id: praati,v 1.12 2014/02/27 20:40:57 je Exp $
 
 =pod
 
@@ -243,8 +243,10 @@ package Praati::View {
   sub maybe_error {
     my ($name, $errors, $colspan) = @_;
 
+    my $errormessages = join(' ' => @{ $errors->{ $name } });
+
     defined($errors->{ $name })
-      ? (td { -colspan => $colspan }, $errors->{ $name })
+      ? td({ -colspan => $colspan }, $errormessages)
       : ();
   }
 
@@ -334,6 +336,20 @@ package Praati::Controller {
     );
   }
 
+  sub add_error {
+    my ($errors, $field, $error_message) = @_;
+    push @{ $errors->{ $field } }, $error_message;
+  }
+
+  # we do not want to show unknown error messages to users,
+  # but we should log those.
+  sub add_unknown_error {
+    my ($errors, $field, $message) = @_;
+    warn "Unknown error: $message";
+    add_error($errors, $field, 'Unknown error');
+    return;
+  }
+
   #
   # controllers for pages
   #
@@ -343,16 +359,21 @@ package Praati::Controller {
     my $errors = {};
 
     if ($p{submit_new_user}) {
-      # XXX should check that 'user_password' and 'user_password_again' match
+      if ($p{user_password} ne $p{user_password_again}) {
+        add_error($errors, '*', 'Passwords do not match.');
+      }
 
-      eval {
-        Praati::Model::add_new_user(@p{ qw(user_email
-                                           user_name
-                                           user_password) });
-      };
-      return redirect('/login') unless $@;
+      if (scalar(keys %$errors) == 0) {
+        eval {
+          Praati::Model::add_new_user(@p{ qw(user_email
+                                             user_name
+                                             user_password) });
+        };
 
-      $errors->{'*'} = $@; # XXX these should be handled properly
+        return redirect('/login') unless $@;
+
+        add_unknown_error($errors, '*', $@);
+      }
     }
 
     Praati::View::page_new_user($errors);
