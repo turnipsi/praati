@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.12 2014/02/27 20:40:57 je Exp $
+# $Id: praati,v 1.13 2014/02/28 20:14:40 je Exp $
 
 =pod
 
@@ -243,10 +243,9 @@ package Praati::View {
   sub maybe_error {
     my ($name, $errors, $colspan) = @_;
 
-    my $errormessages = join(' ' => @{ $errors->{ $name } });
-
     defined($errors->{ $name })
-      ? td({ -colspan => $colspan }, $errormessages)
+      ? td({ -colspan => $colspan },
+           join(' ' => @{ $errors->{ $name } }))
       : ();
   }
 
@@ -257,15 +256,21 @@ package Praati::View {
   sub page_new_user {
     my ($errors) = @_;
 
-    # XXX show errors
-    my $tablerows = [
-      maybe_error('*' => $errors, 2),
+    my $table_width = 2;
 
+    my $tablerows = [
+      maybe_error('*' => $errors, $table_width),
+
+      maybe_error(user_email => $errors, $table_width),
       td([ 'email address:',  textfield('user_email')               ]),
+
+      maybe_error(user_name => $errors, $table_width),
       td([ 'name:',           textfield('user_name')                ]),
+
       td([ 'password:',       password_field('user_password')       ]),
       td([ 'password again:', password_field('user_password_again') ]),
-      td({ -colspan => 2 },
+
+      td({ -colspan => $table_width },
          submit(submit_new_user => 'Create new user')),
     ];
 
@@ -369,10 +374,19 @@ package Praati::Controller {
                                              user_name
                                              user_password) });
         };
-
         return redirect('/login') unless $@;
 
-        add_unknown_error($errors, '*', $@);
+        if ($@ =~ /column user_email is not unique/) {
+          add_error($errors,
+                    'user_email',
+                    'Email address is already reserved.');
+
+        } elsif ($@ =~ /column user_name is not unique/) {
+          add_error($errors, 'user_name', 'Username is already reserved.');
+
+        } else {
+          add_unknown_error($errors, '*', $@);
+        }
       }
     }
 
