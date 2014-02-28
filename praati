@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.13 2014/02/28 20:14:40 je Exp $
+# $Id: praati,v 1.14 2014/02/28 20:37:33 je Exp $
 
 =pod
 
@@ -15,6 +15,7 @@ A sample Apache configuration:
     PerlHandler Apache::PerlRun
     PerlModule autodie           \
                diagnostics       \
+               BSD::arc4random   \
                CGI::Pretty       \
                Class::Struct     \
                Crypt::SaltedHash \
@@ -210,6 +211,7 @@ package Praati::View {
   BEGIN {
     my @html_funcs = qw(end_html
                         form
+                        p
                         password_field
                         start_html
                         submit
@@ -253,6 +255,12 @@ package Praati::View {
   # pages
   #
 
+  sub page_login {
+    my ($errors, $new_session_key) = @_;
+
+    page(p("new_session_key: $new_session_key"));
+  }
+
   sub page_new_user {
     my ($errors) = @_;
 
@@ -289,6 +297,7 @@ package Praati::View {
 package Praati::Controller {
   Praati->import;
 
+  use BSD::arc4random qw(arc4random_bytes);
   use CGI::Pretty qw(-any);
 
   $CGI::Pretty::INDENT = ' ' x 2;
@@ -335,6 +344,7 @@ package Praati::Controller {
     (
       m|^$|          ? redirect('/new_user') :
       m|^/$|         ? redirect('/new_user') :
+      m|^/login$|    ? login_controller()    :
       m|^/new_user$| ? new_user_controller() :
 
         no_such_page()
@@ -358,6 +368,13 @@ package Praati::Controller {
   #
   # controllers for pages
   #
+
+  sub login_controller {
+    my $errors = {};
+    my $new_session_key = unpack('h*', arc4random_bytes(20));
+
+    Praati::View::page_login($errors, $new_session_key);
+  }
 
   sub new_user_controller {
     my %p = $Q->Vars;
