@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.16 2014/03/01 11:44:48 je Exp $
+# $Id: praati,v 1.17 2014/03/01 12:18:37 je Exp $
 
 =pod
 
@@ -138,6 +138,17 @@ package Praati::Model {
 
   # DBI helpers
 
+  sub one_value {
+    my ($sql, @bind_values) = @_;
+    my $columns = $DB->selectcol_arrayref($sql, {}, @bind_values);
+    my $count = scalar(@$columns);
+
+    die "Would be returning not exactly one value, but $count values"
+      if $count != 1;
+
+    $columns->[0];
+  }
+
   sub query {
     my ($sql, @bind_values) = @_;
     $DB->do($sql, undef, @bind_values);
@@ -236,6 +247,18 @@ package Praati::Model {
 
   sub new_user_role {
     'admin'; # XXX
+  }
+
+  sub verify_user_password {
+    my ($errors, $user_email, $user_password) = @_;
+
+    my $salted_hash = one_value(q{ select user_encrypted_password from users
+                                     where user_email = ?; },
+                                $user_email);
+
+    if (not Crypt::SaltedHash->validate($salted_hash, $user_password)) {
+      add_error($errors, '*', 'Wrong username or password.');
+    }
   }
 }
 
@@ -440,9 +463,28 @@ package Praati::Controller {
   #
 
   sub login_controller {
+    my %p = $Q->Vars;
     my $errors = {};
-    my $new_session_key = unpack('h*', arc4random_bytes(20));
 
+    if ($p{submit_login}) {
+      if ($p{new_session_key} !~ /^[0-9a-f]{40}$/) {
+        add_error($errors, '*', 'Session key is not valid.');
+      }
+
+      eval {
+        Praati::Model::verify_user_password($errors,
+                                            @p{ qw(user_email
+                                                   user_password) });
+      };
+      if ($@) { add_unknown_error($errors, '*', $@); }
+
+      if (not %$errors) {
+        # XXX cookie must also be set
+        return redirect('/main');
+      }
+    }
+
+    my $new_session_key = unpack('h*', arc4random_bytes(20));
     Praati::View::page_login($errors, $new_session_key);
   }
 
