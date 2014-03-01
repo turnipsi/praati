@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.17 2014/03/01 12:18:37 je Exp $
+# $Id: praati,v 1.18 2014/03/01 13:37:28 je Exp $
 
 =pod
 
@@ -16,6 +16,7 @@ A sample Apache configuration:
     PerlModule autodie           \
                diagnostics       \
                BSD::arc4random   \
+               CGI::Cookie       \
                CGI::Pretty       \
                Class::Struct     \
                Crypt::SaltedHash \
@@ -466,6 +467,9 @@ package Praati::Controller {
     my %p = $Q->Vars;
     my $errors = {};
 
+    # XXX cookie should tested valid!
+    return redirect('/main') if $Q->cookie('session_key');
+
     if ($p{submit_login}) {
       if ($p{new_session_key} !~ /^[0-9a-f]{40}$/) {
         add_error($errors, '*', 'Session key is not valid.');
@@ -479,8 +483,12 @@ package Praati::Controller {
       if ($@) { add_unknown_error($errors, '*', $@); }
 
       if (not %$errors) {
-        # XXX cookie must also be set
-        return redirect('/main');
+        # XXX must add session_key to database
+        my $cookie = $Q->cookie(-expires => '+12h',
+                                -name    => 'session_key',
+                                -value   => $p{new_session_key});
+
+        return response(cookie => $cookie, page => '');
       }
     }
 
@@ -521,6 +529,7 @@ package Praati::Controller::Response {
   Praati->import;
 
   use Class::Struct __PACKAGE__, {
+    cookie       => '$',
     page         => '$',
     redirect_uri => '$',
     status       => '$',
@@ -529,9 +538,10 @@ package Praati::Controller::Response {
   sub page_with_header {
     my ($self, $q) = @_;
 
-    my @header_args = defined($self->status)
-                        ? (-status => $self->status)
-                        : ();
+    my @header_args = (
+      defined($self->cookie) ? (-cookie => $self->cookie) : (),
+      defined($self->status) ? (-status => $self->status) : (),
+    );
 
     $q->header(@header_args)
     . $self->page;
