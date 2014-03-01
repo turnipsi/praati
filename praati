@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.18 2014/03/01 13:37:28 je Exp $
+# $Id: praati,v 1.19 2014/03/01 20:05:13 je Exp $
 
 =pod
 
@@ -285,7 +285,6 @@ package Praati::View {
   BEGIN {
     my @query_methods = qw(end_html
                            form
-                           hidden
                            p
                            password_field
                            start_html
@@ -331,7 +330,7 @@ package Praati::View {
   #
 
   sub page_login {
-    my ($errors, $new_session_key) = @_;
+    my ($errors, $cookie) = @_;
 
     my $table_width = 2;
 
@@ -342,16 +341,15 @@ package Praati::View {
       td([ 'password:',      password_field('user_password') ]),
 
       td({ -colspan => $table_width },
-         hidden(new_session_key => $new_session_key)),
-
-      td({ -colspan => $table_width },
          submit(submit_login => 'Login')),
     ];
 
-    page(
-      form({ -method => 'post' },
-        table(
-          Tr $tablerows)));
+    my $page
+      = form({ -method => 'post' },
+          table(
+            Tr $tablerows));
+
+    response(cookie => $cookie, page => $page);
   }
 
   sub page_new_user {
@@ -436,8 +434,8 @@ package Praati::Controller {
     local $_ = $path_info;
 
     (
-      m|^$|          ? redirect('/new_user') :
-      m|^/$|         ? redirect('/new_user') :
+      m|^$|          ? redirect('/main')     :
+      m|^/$|         ? redirect('/main')     :
       m|^/login$|    ? login_controller()    :
       m|^/new_user$| ? new_user_controller() :
 
@@ -467,12 +465,14 @@ package Praati::Controller {
     my %p = $Q->Vars;
     my $errors = {};
 
-    # XXX cookie should tested valid!
-    return redirect('/main') if $Q->cookie('session_key');
+    my $session_key = $Q->cookie('session_key');
+    # XXX if session by this key exists, redirect to /main
 
     if ($p{submit_login}) {
-      if ($p{new_session_key} !~ /^[0-9a-f]{40}$/) {
-        add_error($errors, '*', 'Session key is not valid.');
+      if (not ($session_key && $session_key =~ /^[0-9a-f]{40}$/)) {
+        add_error($errors,
+                  '*',
+                  'To login, cookies must be accepted by the browser.');
       }
 
       eval {
@@ -483,17 +483,17 @@ package Praati::Controller {
       if ($@) { add_unknown_error($errors, '*', $@); }
 
       if (not %$errors) {
-        # XXX must add session_key to database
-        my $cookie = $Q->cookie(-expires => '+12h',
-                                -name    => 'session_key',
-                                -value   => $p{new_session_key});
-
-        return response(cookie => $cookie, page => '');
+        return redirect('/main');
       }
     }
 
     my $new_session_key = unpack('h*', arc4random_bytes(20));
-    Praati::View::page_login($errors, $new_session_key);
+
+    my $cookie = $Q->cookie(-expires => '+12h',
+                            -name    => 'session_key',
+                            -value   => $new_session_key);
+
+    Praati::View::page_login($errors, $cookie);
   }
 
   sub new_user_controller {
