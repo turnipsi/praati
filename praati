@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.15 2014/03/01 11:40:50 je Exp $
+# $Id: praati,v 1.16 2014/03/01 11:44:48 je Exp $
 
 =pod
 
@@ -261,6 +261,7 @@ package Praati::View {
   BEGIN {
     my @query_methods = qw(end_html
                            form
+                           hidden
                            p
                            password_field
                            start_html
@@ -315,6 +316,9 @@ package Praati::View {
 
       td([ 'email address:', textfield('user_email')         ]),
       td([ 'password:',      password_field('user_password') ]),
+
+      td({ -colspan => $table_width },
+         hidden(new_session_key => $new_session_key)),
 
       td({ -colspan => $table_width },
          submit(submit_login => 'Login')),
