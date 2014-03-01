@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.19 2014/03/01 20:05:13 je Exp $
+# $Id: praati,v 1.20 2014/03/01 20:32:54 je Exp $
 
 =pod
 
@@ -47,10 +47,16 @@ use warnings FATAL => qw(all);
 package Praati {
   use Data::Dumper;
   use Exporter qw(import);
+  use Scalar::Util qw(blessed);
 
-  our @EXPORT = qw(d);
+  our @EXPORT = qw(blessed d error);
 
   sub d { Dumper(@_); }
+  sub error { die Praati::Error->new(@_); }
+}
+
+package Praati::Error {
+  use Class::Struct __PACKAGE__, { message => '$', type => '$' };
 }
 
 
@@ -76,9 +82,10 @@ package Praati::Config {
 
 package Praati::Controller {
   use Exporter qw(import);
-  our @EXPORT = qw(add_error query_method response);
+  our @EXPORT = qw(add_ui_error check_user_session_key query_method response);
 
-  sub add_error;
+  sub add_ui_error;
+  sub check_user_session_key;
   sub query_method;
   sub response;
 }
@@ -134,6 +141,14 @@ package Praati::Model {
         user_role               varchar(256)             not null
                                 check(user_role in ('admin', 'critic'))
       );
+
+      create table if not exists user_sessions (
+        user_session_id         integer      primary key not null,
+        user_session_expires_at timestamp    not null,
+        user_session_key        varchar(256) unique not null
+          check(check_user_session_key(user_session_key)),
+        user_id                 integer      not null references users(user_id)
+      );
     });
   }
 
@@ -144,8 +159,11 @@ package Praati::Model {
     my $columns = $DB->selectcol_arrayref($sql, {}, @bind_values);
     my $count = scalar(@$columns);
 
-    die "Would be returning not exactly one value, but $count values"
-      if $count != 1;
+    if ($count != 1) {
+      error(
+        message => "Would be returning not exactly one value, but $count values",
+        type    => 'not one');
+    }
 
     $columns->[0];
   }
@@ -205,18 +223,20 @@ package Praati::Model {
     my $user_role               = new_user_role();
 
     if (not check_user_email($user_email)) {
-      add_error($errors, 'user_email', 'User email address is not valid.');
+      add_ui_error($errors, 'user_email', 'User email address is not valid.');
     }
 
     transaction(sub {
       if (test(q{ select user_id from users where user_email = ?; },
                 $user_email)) {
-        add_error($errors, 'user_email', 'Email address is already reserved.');
+        add_ui_error($errors,
+                     'user_email',
+                     'Email address is already reserved.');
       }
 
       if (test(q{ select user_id from users where user_name = ?; },
                 $user_name)) {
-        add_error($errors, 'user_name', 'Username is already reserved.');
+        add_ui_error($errors, 'user_name', 'Username is already reserved.');
       }
 
       if (not %$errors) {
@@ -253,12 +273,17 @@ package Praati::Model {
   sub verify_user_password {
     my ($errors, $user_email, $user_password) = @_;
 
-    my $salted_hash = one_value(q{ select user_encrypted_password from users
+    my $salted_hash;
+    eval {
+      $salted_hash = one_value(q{ select user_encrypted_password from users
                                      where user_email = ?; },
                                 $user_email);
+    };
+    my $err = $@;
 
-    if (not Crypt::SaltedHash->validate($salted_hash, $user_password)) {
-      add_error($errors, '*', 'Wrong username or password.');
+    if ((blessed($err) && $err->type eq 'not one')
+          or not Crypt::SaltedHash->validate($salted_hash, $user_password)) {
+      add_ui_error($errors, '*', 'Wrong username or password.');
     }
   }
 }
@@ -269,7 +294,13 @@ package Praati::Model::SQLite {
   sub register { $Praati::Model::DB->sqlite_create_function(@_); }
 
   sub register_sqlite_functions {
-    register(check_user_email => 1, \&Praati::Model::check_user_email);
+    register('check_user_email',
+             1,
+             \&Praati::Model::check_user_email);
+
+    register('check_user_session_key',
+             1,
+             \&Praati::Model::check_user_session_key);
   }
 }
 
@@ -443,18 +474,23 @@ package Praati::Controller {
     );
   }
 
-  sub add_error {
+  sub add_ui_error {
     my ($errors, $field, $error_message) = @_;
     push @{ $errors->{ $field } }, $error_message;
   }
 
   # we do not want to show unknown error messages to users,
   # but we should log those.
-  sub add_unknown_error {
+  sub add_unknown_ui_error {
     my ($errors, $field, $message) = @_;
     warn "Unknown error: $message";
-    add_error($errors, $field, 'Unknown error');
+    add_ui_error($errors, $field, 'Unknown error');
     return;
+  }
+
+  sub check_user_session_key {
+    my ($session_key) = @_;
+    $session_key && $session_key =~ /^[0-9a-f]{40}$/;
   }
 
   #
@@ -469,10 +505,10 @@ package Praati::Controller {
     # XXX if session by this key exists, redirect to /main
 
     if ($p{submit_login}) {
-      if (not ($session_key && $session_key =~ /^[0-9a-f]{40}$/)) {
-        add_error($errors,
-                  '*',
-                  'To login, cookies must be accepted by the browser.');
+      if (not check_user_session_key($session_key)) {
+        add_ui_error($errors,
+                     '*',
+                     'To login, cookies must be accepted by the browser.');
       }
 
       eval {
@@ -480,7 +516,7 @@ package Praati::Controller {
                                             @p{ qw(user_email
                                                    user_password) });
       };
-      if ($@) { add_unknown_error($errors, '*', $@); }
+      if ($@) { add_unknown_ui_error($errors, '*', $@); }
 
       if (not %$errors) {
         return redirect('/main');
@@ -502,7 +538,7 @@ package Praati::Controller {
 
     if ($p{submit_new_user}) {
       if ($p{user_password} ne $p{user_password_again}) {
-        add_error($errors, '*', 'Passwords do not match.');
+        add_ui_error($errors, '*', 'Passwords do not match.');
       }
 
       eval {
@@ -511,7 +547,7 @@ package Praati::Controller {
                                            user_name
                                            user_password) });
       };
-      if ($@) { add_unknown_error($errors, '*', $@); }
+      if ($@) { add_unknown_ui_error($errors, '*', $@); }
 
       return redirect('/login') unless %$errors;
     }
