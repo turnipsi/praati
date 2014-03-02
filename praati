@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.21 2014/03/02 08:52:02 je Exp $
+# $Id: praati,v 1.22 2014/03/02 08:56:12 je Exp $
 
 =pod
 
@@ -73,6 +73,8 @@ package Praati::Config {
   our $DB_FILE_PATH = "${WWW_DIR}/${DB_DIR}/praati.sqlite3";
 
   our $MUSIC_PATH = "${DB_DIR}/music";
+
+  our $USER_SESSION_HOURS = 12;
 }
 
 
@@ -376,11 +378,14 @@ package Praati::View {
          submit(submit_login => 'Login')),
     ];
 
-    # refresh every six hours to get a new session cookie
+    my $login_refresh_seconds
+      = int($Praati::Config::USER_SESSION_HOURS * 60 * 60 / 2);
+
+    # refresh every $login_refresh_seconds to get a new session cookie
     # (wipes the form as a side effect)
     my $start_html_options = [
       -head => meta({ -http_equiv => 'refresh',
-                      -content    => 6 * 60 * 60 }),
+                      -content    => $login_refresh_seconds }),
     ];
 
     my $page
@@ -536,7 +541,8 @@ package Praati::Controller {
 
     my $new_session_key = unpack('h*', arc4random_bytes(20));
 
-    my $cookie = $Q->cookie(-expires => '+12h',
+    my $expire_hours = "+${Praati::Config::USER_SESSION_HOURS}h";
+    my $cookie = $Q->cookie(-expires => $expire_hours,
                             -name    => 'session_key',
                             -value   => $new_session_key);
 
