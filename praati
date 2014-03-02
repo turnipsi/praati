@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.22 2014/03/02 08:56:12 je Exp $
+# $Id: praati,v 1.23 2014/03/02 09:38:24 je Exp $
 
 =pod
 
@@ -214,6 +214,7 @@ package Praati::Model {
 
   sub debug_query {
     # warn d(rows('select * from users'));
+    # warn d(rows('select * from user_sessions'));
   }
 
   # functions
@@ -253,9 +254,25 @@ package Praati::Model {
     });
   }
 
+  sub add_user_session {
+    my ($user_email, $session_key) = @_;
+
+    my $sql_hours = "+${Praati::Config::USER_SESSION_HOURS} hours";
+
+    query(q{
+      insert into user_sessions (user_session_expires_at,
+                                 user_session_key,
+                                 user_id)
+        select datetime('now', ?),
+               ?,
+               user_id
+          from users where user_email = ?;
+    }, $sql_hours, $session_key, $user_email);
+  }
+
   sub check_user_email {
-    my ($email_address) = @_;
-    Email::Valid->address($email_address) ? 1 : 0;
+    my ($user_email) = @_;
+    Email::Valid->address($user_email) ? 1 : 0;
   }
 
   # XXX should you just use crypt instead?
@@ -517,8 +534,8 @@ package Praati::Controller {
     my %p = $Q->Vars;
     my $errors = {};
 
-    my $session_key = $Q->cookie('session_key');
     # XXX if session by this key exists, redirect to /main
+    my $session_key = $Q->cookie('session_key');
 
     if ($p{submit_login}) {
       if (not check_user_session_key($session_key)) {
@@ -528,9 +545,14 @@ package Praati::Controller {
       }
 
       eval {
-        Praati::Model::verify_user_password($errors,
-                                            @p{ qw(user_email
-                                                   user_password) });
+        if (not %$errors) {
+          Praati::Model::verify_user_password($errors,
+                                              @p{ qw(user_email
+                                                     user_password) });
+        }
+        if (not %$errors) {
+          Praati::Model::add_user_session($p{user_email}, $session_key);
+        }
       };
       if ($@) { add_unknown_ui_error($errors, '*', $@); }
 
