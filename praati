@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.23 2014/03/02 09:38:24 je Exp $
+# $Id: praati,v 1.24 2014/03/02 16:14:45 je Exp $
 
 =pod
 
@@ -67,14 +67,14 @@ package Praati::Error {
 package Praati::Config {
   Praati->import;
 
-  our $WWW_DIR = '/'; # XXX in OpenBSD Apache chroot only...
+  our $WWW_dir = '/'; # XXX in OpenBSD Apache chroot only...
 
-  our $DB_DIR       = 'db';
-  our $DB_FILE_PATH = "${WWW_DIR}/${DB_DIR}/praati.sqlite3";
+  our $DB_dir       = 'db';
+  our $DB_file_path = "${WWW_dir}/${DB_dir}/praati.sqlite3";
 
-  our $MUSIC_PATH = "${DB_DIR}/music";
+  our $Music_path = "${DB_dir}/music";
 
-  our $USER_SESSION_HOURS = 12;
+  our $User_session_hours = 12;
 }
 
 
@@ -84,12 +84,17 @@ package Praati::Config {
 
 package Praati::Controller {
   use Exporter qw(import);
-  our @EXPORT = qw(add_ui_error check_user_session_key query_method response);
+  our @EXPORT = qw(add_ui_error
+                   check_user_session_key
+                   query_method
+                   response
+                   session_user);
 
   sub add_ui_error;
   sub check_user_session_key;
   sub query_method;
   sub response;
+  sub session_user;
 }
 
 
@@ -114,7 +119,7 @@ package Praati::Model {
       RaiseError                       => 1,
       sqlite_allow_multiple_statements => 1,
     );
-    $DB = DBI->connect("dbi:SQLite:dbname=${Praati::Config::DB_FILE_PATH}",
+    $DB = DBI->connect("dbi:SQLite:dbname=${Praati::Config::DB_file_path}",
 		       '',
 		       '',
 		       \%attrs);
@@ -257,7 +262,7 @@ package Praati::Model {
   sub add_user_session {
     my ($user_email, $session_key) = @_;
 
-    my $sql_hours = "+${Praati::Config::USER_SESSION_HOURS} hours";
+    my $sql_hours = "+${Praati::Config::User_session_hours} hours";
 
     query(q{
       insert into user_sessions (user_session_expires_at,
@@ -283,6 +288,27 @@ package Praati::Model {
     my $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
     $csh->add($password);
     $csh->generate;
+  }
+
+  sub find_session_user {
+    my ($session_key) = @_;
+
+    return if not defined $session_key;
+
+    my $user_id = eval {
+                    one_value(q{ select user_id from user_sessions
+                                   where user_session_key = ?; },
+                              $session_key);
+                  };
+    my $error = $@;
+
+    return $user_id if not $error;
+
+    return if blessed($error) && $error->type eq 'not one';
+
+    warn "Unknown error in find_session_user: $error";
+
+    return;
   }
 
   sub new_user_role {
@@ -396,7 +422,7 @@ package Praati::View {
     ];
 
     my $login_refresh_seconds
-      = int($Praati::Config::USER_SESSION_HOURS * 60 * 60 / 2);
+      = int($Praati::Config::User_session_hours * 60 * 60 / 2);
 
     # refresh every $login_refresh_seconds to get a new session cookie
     # (wipes the form as a side effect)
@@ -458,7 +484,7 @@ package Praati::Controller {
 
   $CGI::Pretty::INDENT = ' ' x 2;
 
-  our $Q;
+  our ($Q, $Session_user);
 
   sub main {
     $Q = CGI->new;
@@ -466,8 +492,10 @@ package Praati::Controller {
     eval {
       Praati::Model::init();
 
-      my $response = url_dispatch( $Q->path_info );
+      my $session_key = $Q->cookie('session_key');
+      $Session_user = Praati::Model::find_session_user($session_key);
 
+      my $response = url_dispatch( $Q->path_info );
       $response->print($Q);
     };
     my $error = $@;
@@ -526,6 +554,8 @@ package Praati::Controller {
     $session_key && $session_key =~ /^[0-9a-f]{40}$/;
   }
 
+  sub session_user { $Session_user; }
+
   #
   # controllers for pages
   #
@@ -534,7 +564,8 @@ package Praati::Controller {
     my %p = $Q->Vars;
     my $errors = {};
 
-    # XXX if session by this key exists, redirect to /main
+    return redirect('/main') if session_user();
+
     my $session_key = $Q->cookie('session_key');
 
     if ($p{submit_login}) {
@@ -563,7 +594,7 @@ package Praati::Controller {
 
     my $new_session_key = unpack('h*', arc4random_bytes(20));
 
-    my $expire_hours = "+${Praati::Config::USER_SESSION_HOURS}h";
+    my $expire_hours = "+${Praati::Config::User_session_hours}h";
     my $cookie = $Q->cookie(-expires => $expire_hours,
                             -name    => 'session_key',
                             -value   => $new_session_key);
