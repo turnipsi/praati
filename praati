@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.24 2014/03/02 16:14:45 je Exp $
+# $Id: praati,v 1.25 2014/03/02 19:02:09 je Exp $
 
 =pod
 
@@ -260,7 +260,7 @@ package Praati::Model {
   }
 
   sub add_user_session {
-    my ($user_email, $session_key) = @_;
+    my ($user_email, $user_session_key) = @_;
 
     my $sql_hours = "+${Praati::Config::User_session_hours} hours";
 
@@ -272,7 +272,7 @@ package Praati::Model {
                ?,
                user_id
           from users where user_email = ?;
-    }, $sql_hours, $session_key, $user_email);
+    }, $sql_hours, $user_session_key, $user_email);
   }
 
   sub check_user_email {
@@ -291,14 +291,14 @@ package Praati::Model {
   }
 
   sub find_session_user {
-    my ($session_key) = @_;
+    my ($user_session_key) = @_;
 
-    return if not defined $session_key;
+    return if not defined $user_session_key;
 
     my $user_id = eval {
                     one_value(q{ select user_id from user_sessions
                                    where user_session_key = ?; },
-                              $session_key);
+                              $user_session_key);
                   };
     my $error = $@;
 
@@ -313,6 +313,12 @@ package Praati::Model {
 
   sub new_user_role {
     'admin'; # XXX
+  }
+
+  sub remove_user_session {
+    my ($user_session_key) = @_;
+    query(q{ delete from user_sessions where user_session_key = ?; },
+          $user_session_key);
   }
 
   sub verify_user_password {
@@ -436,7 +442,6 @@ package Praati::View {
           table(
             Tr $tablerows));
 
-
     response(cookie => $cookie,
              page   => standard_page($page,
                                      -start_html => $start_html_options));
@@ -469,6 +474,21 @@ package Praati::View {
         table(
           Tr $tablerows)));
   }
+
+  sub page_logged_out {
+    my ($cookie) = @_;
+    response(cookie => $cookie,
+             page   => standard_page( p('You are now logged out.') ));
+  }
+
+  sub page_logout_error {
+    my ($errors) = @_;
+    page( p('Could not log out: ' . $errors->{'*'}) );
+  }
+
+  sub page_not_logged_in {
+    page( p('You are not logged in.') );
+  }
 }
 
 
@@ -492,8 +512,8 @@ package Praati::Controller {
     eval {
       Praati::Model::init();
 
-      my $session_key = $Q->cookie('session_key');
-      $Session_user = Praati::Model::find_session_user($session_key);
+      my $user_session_key = $Q->cookie('user_session_key');
+      $Session_user = Praati::Model::find_session_user($user_session_key);
 
       my $response = url_dispatch( $Q->path_info );
       $response->print($Q);
@@ -529,6 +549,7 @@ package Praati::Controller {
       m|^$|          ? redirect('/main')     :
       m|^/$|         ? redirect('/main')     :
       m|^/login$|    ? login_controller()    :
+      m|^/logout$|   ? logout_controller()   :
       m|^/new_user$| ? new_user_controller() :
 
         no_such_page()
@@ -550,8 +571,8 @@ package Praati::Controller {
   }
 
   sub check_user_session_key {
-    my ($session_key) = @_;
-    $session_key && $session_key =~ /^[0-9a-f]{40}$/;
+    my ($user_session_key) = @_;
+    $user_session_key && $user_session_key =~ /^[0-9a-f]{40}$/;
   }
 
   sub session_user { $Session_user; }
@@ -566,10 +587,10 @@ package Praati::Controller {
 
     return redirect('/main') if session_user();
 
-    my $session_key = $Q->cookie('session_key');
+    my $user_session_key = $Q->cookie('user_session_key');
 
     if ($p{submit_login}) {
-      if (not check_user_session_key($session_key)) {
+      if (not check_user_session_key($user_session_key)) {
         add_ui_error($errors,
                      '*',
                      'To login, cookies must be accepted by the browser.');
@@ -582,7 +603,7 @@ package Praati::Controller {
                                                      user_password) });
         }
         if (not %$errors) {
-          Praati::Model::add_user_session($p{user_email}, $session_key);
+          Praati::Model::add_user_session($p{user_email}, $user_session_key);
         }
       };
       if ($@) { add_unknown_ui_error($errors, '*', $@); }
@@ -592,14 +613,35 @@ package Praati::Controller {
       }
     }
 
-    my $new_session_key = unpack('h*', arc4random_bytes(20));
+    my $new_user_session_key = unpack('h*', arc4random_bytes(20));
 
     my $expire_hours = "+${Praati::Config::User_session_hours}h";
     my $cookie = $Q->cookie(-expires => $expire_hours,
-                            -name    => 'session_key',
-                            -value   => $new_session_key);
+                            -name    => 'user_session_key',
+                            -value   => $new_user_session_key);
 
     Praati::View::page_login($errors, $cookie);
+  }
+
+  sub logout_controller {
+    my $user_session_key = $Q->cookie('user_session_key');
+
+    return Praati::View::page_not_logged_in() if not $user_session_key;
+
+    my $errors = {};
+
+    eval { Praati::Model::remove_user_session($user_session_key); };
+    my $error = $@;
+
+    if ($error) { add_unknown_ui_error($errors, '*', $error); }
+
+    return Praati::View::page_logout_error($errors) if %$errors;
+
+    # expire cookie
+    my $cookie = $Q->cookie(-expires => '-1d',
+                            -name    => 'user_session_key',
+                            -value   => $user_session_key);
+    Praati::View::page_logged_out($cookie);
   }
 
   sub new_user_controller {
