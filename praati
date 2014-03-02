@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.20 2014/03/01 20:32:54 je Exp $
+# $Id: praati,v 1.21 2014/03/02 08:52:02 je Exp $
 
 =pod
 
@@ -316,6 +316,7 @@ package Praati::View {
   BEGIN {
     my @query_methods = qw(end_html
                            form
+                           meta
                            p
                            password_field
                            start_html
@@ -335,12 +336,12 @@ package Praati::View {
     ''; # XXX
   }
 
-  sub page { response(page => standard_page($_[0])); }
+  sub page { response(page => standard_page(@_)); }
 
   sub standard_page {
-    my ($content) = @_;
+    my ($content, %opts) = @_;
 
-    start_html()
+    start_html($opts{-start_html} ? @{ $opts{-start_html} } : ())
     . menu()
     . $content
     . end_html()
@@ -375,12 +376,22 @@ package Praati::View {
          submit(submit_login => 'Login')),
     ];
 
+    # refresh every six hours to get a new session cookie
+    # (wipes the form as a side effect)
+    my $start_html_options = [
+      -head => meta({ -http_equiv => 'refresh',
+                      -content    => 6 * 60 * 60 }),
+    ];
+
     my $page
       = form({ -method => 'post' },
           table(
             Tr $tablerows));
 
-    response(cookie => $cookie, page => $page);
+
+    response(cookie => $cookie,
+             page   => standard_page($page,
+                                     -start_html => $start_html_options));
   }
 
   sub page_new_user {
