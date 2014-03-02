@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.25 2014/03/02 19:02:09 je Exp $
+# $Id: praati,v 1.26 2014/03/02 20:10:25 je Exp $
 
 =pod
 
@@ -123,14 +123,14 @@ package Praati::Model {
 		       '',
 		       '',
 		       \%attrs);
-
     $DB->do('PRAGMA foreign_keys = ON');
 
     Praati::Model::SQLite::register_sqlite_functions();
 
     create_db_tables();
-
     debug_query();
+    expire_old_user_sessions();
+    return;
   }
 
   sub close {
@@ -222,7 +222,7 @@ package Praati::Model {
     # warn d(rows('select * from user_sessions'));
   }
 
-  # functions
+  # user handling
 
   sub add_new_user {
     my ($errors, $user_email, $user_name, $user_password) = @_;
@@ -259,6 +259,44 @@ package Praati::Model {
     });
   }
 
+  sub check_user_email {
+    my ($user_email) = @_;
+    Email::Valid->address($user_email) ? 1 : 0;
+  }
+
+  # XXX should you just use crypt instead?
+  # XXX are blowfish passwords portable?
+  # XXX how to generate salt for those?
+  sub crypt_password {
+    my ($password) = @_;
+    my $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
+    $csh->add($password);
+    $csh->generate;
+  }
+
+  sub new_user_role {
+    'admin'; # XXX
+  }
+
+  sub verify_user_password {
+    my ($errors, $user_email, $user_password) = @_;
+
+    my $salted_hash;
+    eval {
+      $salted_hash = one_value(q{ select user_encrypted_password from users
+                                     where user_email = ?; },
+                                $user_email);
+    };
+    my $err = $@;
+
+    if ((blessed($err) && $err->type eq 'not one')
+          or not Crypt::SaltedHash->validate($salted_hash, $user_password)) {
+      add_ui_error($errors, '*', 'Wrong username or password.');
+    }
+  }
+
+  # user sessions handling
+
   sub add_user_session {
     my ($user_email, $user_session_key) = @_;
 
@@ -275,19 +313,9 @@ package Praati::Model {
     }, $sql_hours, $user_session_key, $user_email);
   }
 
-  sub check_user_email {
-    my ($user_email) = @_;
-    Email::Valid->address($user_email) ? 1 : 0;
-  }
-
-  # XXX should you just use crypt instead?
-  # XXX are blowfish passwords portable?
-  # XXX how to generate salt for those?
-  sub crypt_password {
-    my ($password) = @_;
-    my $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
-    $csh->add($password);
-    $csh->generate;
+  sub expire_old_user_sessions {
+    query(q{ delete from user_sessions
+               where user_session_expires_at < datetime('now'); });
   }
 
   sub find_session_user {
@@ -311,31 +339,10 @@ package Praati::Model {
     return;
   }
 
-  sub new_user_role {
-    'admin'; # XXX
-  }
-
   sub remove_user_session {
     my ($user_session_key) = @_;
     query(q{ delete from user_sessions where user_session_key = ?; },
           $user_session_key);
-  }
-
-  sub verify_user_password {
-    my ($errors, $user_email, $user_password) = @_;
-
-    my $salted_hash;
-    eval {
-      $salted_hash = one_value(q{ select user_encrypted_password from users
-                                     where user_email = ?; },
-                                $user_email);
-    };
-    my $err = $@;
-
-    if ((blessed($err) && $err->type eq 'not one')
-          or not Crypt::SaltedHash->validate($salted_hash, $user_password)) {
-      add_ui_error($errors, '*', 'Wrong username or password.');
-    }
   }
 }
 
