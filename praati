@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.28 2014/03/03 20:05:19 je Exp $
+# $Id: praati,v 1.29 2014/03/03 20:11:12 je Exp $
 
 =pod
 
@@ -427,7 +427,8 @@ package Praati::View {
     my $session_user = session_user();
 
     my $user_role = $session_user
-                      ? one_value(q{ select user_role from users user_id = ?; },
+                      ? one_value(q{ select user_role from users
+                                       where user_id = ?; },
                                   $session_user)
                       : 'anonymous';
 
@@ -506,7 +507,7 @@ package Praati::View {
   }
 
   sub page_main {
-    page('The main page.');
+    page( p('The main page.') );
   }
 
   sub page_new_user {
@@ -538,6 +539,8 @@ package Praati::View {
   }
 
   sub page_logged_out {
+    # XXX this should the wrong menu (it has not logged out completely)
+
     my ($cookie) = @_;
     response(cookie => $cookie,
              page   => standard_page( p('You are now logged out.') ));
@@ -550,6 +553,10 @@ package Praati::View {
 
   sub page_not_logged_in {
     page( p('You are not logged in.') );
+  }
+
+  sub page_panels {
+    page( p('The panels page.') );
   }
 }
 
@@ -612,8 +619,9 @@ package Praati::Controller {
       m|^/$|         ? redirect('/main')     :
       m|^/login$|    ? login_controller()    :
       m|^/logout$|   ? logout_controller()   :
-      m|^/main$|     ? main_controller()     :
+      m|^/main$|     ? main_controller()     : # XXX do we need this at all?
       m|^/new_user$| ? new_user_controller() :
+      m|^/panels$|   ? panels_controller()   :
 
         no_such_page()
     );
@@ -737,6 +745,10 @@ package Praati::Controller {
   sub no_such_page {
     response(page   => 'No such page.',
              status => 404);
+  }
+
+  sub panels_controller {
+    Praati::View::page_panels();
   }
 }
 
