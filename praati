@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.26 2014/03/02 20:10:25 je Exp $
+# $Id: praati,v 1.27 2014/03/03 20:03:27 je Exp $
 
 =pod
 
@@ -109,6 +109,9 @@ package Praati::Model {
   use Crypt::SaltedHash;
   use DBI;
   use Email::Valid;
+  use Exporter qw(import);
+
+  our @EXPORT = qw(one_value);
 
   our $DB;
 
@@ -370,12 +373,15 @@ package Praati::Model::SQLite {
 package Praati::View {
   Praati->import;
   Praati::Controller->import;
+  Praati::Model->import;
 
   BEGIN {
-    my @query_methods = qw(end_html
+    my @query_methods = qw(a
+                           end_html
                            form
                            meta
                            p
+                           path_info
                            password_field
                            start_html
                            submit
@@ -390,8 +396,53 @@ package Praati::View {
     }
   }
 
+  sub link_if_not_this_page {
+    my ($target) = @_;
+
+    my $page_descriptions = {
+      login    => 'Login',
+      logout   => 'Logout',
+      main     => 'Main',
+      new_user => 'New user',
+      panels   => 'Panels',
+    };
+
+    my $description = $page_descriptions->{ $target };
+    die "No page description found for $target" unless $description;
+
+    "/$target" eq path_info()
+      ? $description
+      : a({ -href => link_to($target) },
+          $description);
+  }
+
+  sub link_to {
+    my ($target) = @_;
+    my $path_depth = scalar(split(m|/|, path_info())) - 2;
+    my $target_prefix = '../' x $path_depth;
+    "${target_prefix}${target}";
+  }
+
   sub menu {
-    ''; # XXX
+    my $session_user = session_user();
+
+    my $user_role = $session_user
+                      ? one_value(q{ select user_role from users user_id = ?; },
+                                  $session_user)
+                      : 'anonymous';
+
+    my $pages_by_role = {
+      admin     => [ qw(main          panels       logout) ],
+      anonymous => [ qw(main new_user        login       ) ],
+      critic    => [ qw(main          panels       logout) ],
+    };
+
+    my $pagelist = $pages_by_role->{ $user_role };
+    die "No pagelist found for $user_role" unless $pagelist;
+
+    table(
+      Tr(
+        map { td( link_if_not_this_page($_) ) } @$pagelist));
   }
 
   sub page { response(page => standard_page(@_)); }
@@ -452,6 +503,10 @@ package Praati::View {
     response(cookie => $cookie,
              page   => standard_page($page,
                                      -start_html => $start_html_options));
+  }
+
+  sub page_main {
+    page('The main page.');
   }
 
   sub page_new_user {
@@ -557,6 +612,7 @@ package Praati::Controller {
       m|^/$|         ? redirect('/main')     :
       m|^/login$|    ? login_controller()    :
       m|^/logout$|   ? logout_controller()   :
+      m|^/main$|     ? main_controller()     :
       m|^/new_user$| ? new_user_controller() :
 
         no_such_page()
@@ -649,6 +705,10 @@ package Praati::Controller {
                             -name    => 'user_session_key',
                             -value   => $user_session_key);
     Praati::View::page_logged_out($cookie);
+  }
+
+  sub main_controller {
+    Praati::View::page_main();
   }
 
   sub new_user_controller {
