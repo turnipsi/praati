@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.27 2014/03/03 20:03:27 je Exp $
+# $Id: praati,v 1.28 2014/03/03 20:05:19 je Exp $
 
 =pod
 
@@ -442,7 +442,7 @@ package Praati::View {
 
     table(
       Tr(
-        map { td( link_if_not_this_page($_) ) } @$pagelist));
+        td([ map { link_if_not_this_page($_) } @$pagelist ])));
   }
 
   sub page { response(page => standard_page(@_)); }
