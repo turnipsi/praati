@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.30 2014/03/04 19:09:42 je Exp $
+# $Id: praati,v 1.31 2014/03/04 20:14:42 je Exp $
 
 =pod
 
@@ -25,6 +25,11 @@ A sample Apache configuration:
                DBI               \
                Digest::SHA       \
                Email::Valid      \
+               Encode            \
+               Encode::Unicode   \
+               File::Find        \
+               File::Glob        \
+               MP3::Tag          \
                POSIX
     PerlSendHeader On
     PerlSetVar PerlRunOnce On
@@ -47,12 +52,22 @@ use warnings FATAL => qw(all);
 package Praati {
   use Data::Dumper;
   use Exporter qw(import);
+  use File::Find;
   use Scalar::Util qw(blessed);
 
-  our @EXPORT = qw(blessed d error);
+  our @EXPORT = qw(blessed d error find_files);
 
   sub d { Dumper(@_); }
   sub error { die Praati::Error->new(@_); }
+
+  sub find_files {
+    my ($check_fn, $dir) = @_;
+    my @files;
+    find({ no_chdir => 1,
+           wanted   => sub { push @files, $_ if $check_fn->(); } },
+         $dir);
+    @files;
+  }
 }
 
 package Praati::Error {
@@ -72,7 +87,7 @@ package Praati::Config {
   our $DB_dir       = 'db';
   our $DB_file_path = "${WWW_dir}/${DB_dir}/praati.sqlite3";
 
-  our $Music_path = "${DB_dir}/music";
+  our $Music_path = "${WWW_dir}/${DB_dir}/music";
 
   our $User_session_hours = 12;
 }
@@ -110,8 +125,9 @@ package Praati::Model {
   use DBI;
   use Email::Valid;
   use Exporter qw(import);
+  use File::Glob qw(bsd_glob);
 
-  our @EXPORT = qw(one_value);
+  our @EXPORT = qw(last_insert_id one_value query rows);
 
   our $DB;
 
@@ -131,8 +147,10 @@ package Praati::Model {
     Praati::Model::SQLite::register_sqlite_functions();
 
     create_db_tables();
+    init_db_tables();
     debug_query();
     expire_old_user_sessions();
+
     return;
   }
 
@@ -159,10 +177,68 @@ package Praati::Model {
           check(check_user_session_key(user_session_key)),
         user_id                 integer      not null references users(user_id)
       );
+
+      create table if not exists panels (
+        panel_id        integer      primary key not null,
+        panel_musicpath varchar(256) unique not null,
+        panel_name      varchar(256) unique not null
+      );
+
+      create table if not exists songs (
+        song_id       integer      primary key not null,
+        song_filepath varchar(256) unique not null,
+        song_name     varchar(256) not null,
+        artist_id     integer      not null references artists(artist_id)
+      );
+
+      create table if not exists albums (
+        album_id   integer      primary key not null,
+        album_name varchar(256) unique not null,
+        album_year integer      not null
+      );
+
+      create table if not exists artists (
+        artist_id   integer      primary key not null,
+        artist_name varchar(256) unique not null
+      );
+
+      create table if not exists songs_in_album (
+        album_id     integer not null references albums(album_id),
+        song_id      integer not null references songs(song_id),
+        track_number integer not null,
+
+        primary key(album_id, song_id)
+      );
+
+      create table if not exists songs_in_panel (
+        album_id integer not null references albums(album_id),
+        panel_id integer not null references panels(panel_id),
+        song_id  integer not null references songs(song_id),
+
+        primary key(panel_id, song_id)
+      );
+
     });
   }
 
+  sub init_db_tables {
+    my @musicdirs = bsd_glob("${Praati::Config::Music_path}/*");
+
+    foreach my $musicdir (@musicdirs) {
+      transaction(sub {
+        my $panels = rows(q{ select * from panels where panel_musicpath = ?; },
+                          $musicdir);
+
+        if (@$panels == 0) {
+          Praati::Model::Musicscan::init_panel($musicdir);
+        }
+      });
+    }
+  }
+
   # DBI helpers
+
+  sub last_insert_id { $DB->last_insert_id('', '', '', ''); }
 
   sub one_value {
     my ($sql, @bind_values) = @_;
@@ -223,6 +299,8 @@ package Praati::Model {
   sub debug_query {
     # warn d(rows('select * from users'));
     # warn d(rows('select * from user_sessions'));
+    # warn d(rows('select * from panels'));
+    # warn d(rows('select * from songs'));
   }
 
   # user handling
@@ -346,6 +424,79 @@ package Praati::Model {
     my ($user_session_key) = @_;
     query(q{ delete from user_sessions where user_session_key = ?; },
           $user_session_key);
+  }
+}
+
+package Praati::Model::Musicscan {
+  Praati->import;
+  Praati::Model->import;
+
+  use File::Basename;
+  use MP3::Tag;
+
+  sub init_panel {
+    my ($panel_musicpath) = @_;
+    my $panel_name = fileparse($panel_musicpath);
+
+    query(q{ insert into panels (panel_musicpath, panel_name) values (?, ?); },
+          $panel_musicpath,
+          $panel_name);
+
+    my $panel_id = last_insert_id();
+    my @mp3_filepaths = find_files(sub { /\.mp3$/ }, $panel_musicpath);
+
+    foreach my $mp3_filepath (@mp3_filepaths) {
+      my $mp3tag = MP3::Tag->new($mp3_filepath);
+      add_song($panel_id, $mp3_filepath, $mp3tag);
+    }
+  }
+
+  sub add_song {
+    my ($panel_id, $mp3_filepath, $mp3tag) = @_;
+
+    foreach my $field (qw(album artist title track1 year)) {
+      unless ($mp3tag->$field) {
+        die "The mp3 file $mp3_filepath is missing $field";
+      }
+    }
+
+    query(q{ insert or ignore into artists (artist_name) values (?); },
+          $mp3tag->artist);
+    my $artist_id = one_value(q{ select artist_id from artists
+                                   where artist_name = ?; },
+                              $mp3tag->artist);
+
+    query(q{ insert or ignore into albums (album_name, album_year)
+               values (?, ?); },
+          $mp3tag->album,
+          $mp3tag->year);
+    my $album_id = one_value(q{ select album_id from albums
+                                  where album_name = ?; },
+                             $mp3tag->album);
+    query(q{ update albums set
+               album_year = max(album_year, ?)
+                 where album_id = ?; },
+          $mp3tag->year,
+          $album_id);
+
+    query(q{ insert into songs (song_filepath, song_name, artist_id)
+               values (?, ?, ?); },
+          $mp3_filepath,
+          $mp3tag->title,
+          $artist_id);
+    my $song_id = last_insert_id();
+
+    query(q{ insert into songs_in_album (album_id, song_id, track_number)
+               values (?, ?, ?); },
+          $album_id,
+          $song_id,
+          $mp3tag->track1);
+
+    query(q{ insert into songs_in_panel (album_id, panel_id, song_id)
+               values (?, ?, ?); },
+          $album_id,
+          $panel_id,
+          $song_id);
   }
 }
 
