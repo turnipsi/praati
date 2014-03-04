@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.29 2014/03/03 20:11:12 je Exp $
+# $Id: praati,v 1.30 2014/03/04 19:09:42 je Exp $
 
 =pod
 
@@ -539,8 +539,6 @@ package Praati::View {
   }
 
   sub page_logged_out {
-    # XXX this should the wrong menu (it has not logged out completely)
-
     my ($cookie) = @_;
     response(cookie => $cookie,
              page   => standard_page( p('You are now logged out.') ));
@@ -712,6 +710,11 @@ package Praati::Controller {
     my $cookie = $Q->cookie(-expires => '-1d',
                             -name    => 'user_session_key',
                             -value   => $user_session_key);
+
+    # must set this so that view (menu generation code specifically)
+    # will not think user is logged in now
+    $Session_user = undef;
+
     Praati::View::page_logged_out($cookie);
   }
 
