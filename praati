@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.31 2014/03/04 20:14:42 je Exp $
+# $Id: praati,v 1.32 2014/03/08 10:19:39 je Exp $
 
 =pod
 
@@ -218,6 +218,50 @@ package Praati::Model {
         primary key(panel_id, song_id)
       );
 
+      -- create views
+
+      create view if not exists songinfos
+        as select * from songs
+          join artists        using (artist_id)
+          join songs_in_panel using (song_id)
+          join songs_in_album using (album_id, song_id)
+          join albums         using (album_id);
+
+      -- create triggers
+
+      create trigger if not exists insert_songinfos
+        instead of insert on songinfos
+          begin
+            insert or ignore into artists (artist_name)
+              values (new.artist_name);
+
+            insert or ignore into albums (album_name, album_year)
+              values (new.album_name, new.album_year);
+
+            -- album_name is unique
+            update albums
+              set album_year = max(album_year, new.album_year)
+                where album_name = new.album_name;
+
+            -- artist_name is unique
+            insert into songs (song_filepath, song_name, artist_id)
+              select new.song_filepath, new.song_name, artist_id
+                from artists where artist_name = new.artist_name;
+
+            -- album_name and song_filepath are unique
+            insert into songs_in_album (album_id, song_id, track_number)
+              select album_id, song_id, new.track_number
+                from albums join songs
+                  where    album_name = new.album_name
+                    and song_filepath = new.song_filepath;
+
+            -- album_name and song_filepath are unique
+            insert into songs_in_panel (album_id, panel_id, song_id)
+              select album_id, new.panel_id, song_id
+                from albums join songs
+                  where    album_name = new.album_name
+                    and song_filepath = new.song_filepath;
+          end;
     });
   }
 
@@ -297,10 +341,7 @@ package Praati::Model {
   }
 
   sub debug_query {
-    # warn d(rows('select * from users'));
-    # warn d(rows('select * from user_sessions'));
-    # warn d(rows('select * from panels'));
-    # warn d(rows('select * from songs'));
+    # warn d(rows('select * from albums'));
   }
 
   # user handling
@@ -460,43 +501,23 @@ package Praati::Model::Musicscan {
       }
     }
 
-    query(q{ insert or ignore into artists (artist_name) values (?); },
-          $mp3tag->artist);
-    my $artist_id = one_value(q{ select artist_id from artists
-                                   where artist_name = ?; },
-                              $mp3tag->artist);
-
-    query(q{ insert or ignore into albums (album_name, album_year)
-               values (?, ?); },
+    query(q{
+            insert into songinfos (artist_name,
+                                   album_name,
+                                   album_year,
+                                   song_filepath,
+                                   song_name,
+                                   track_number,
+                                   panel_id)
+              values (?, ?, ?, ?, ?, ?, ?);
+          },
+          $mp3tag->artist,
           $mp3tag->album,
-          $mp3tag->year);
-    my $album_id = one_value(q{ select album_id from albums
-                                  where album_name = ?; },
-                             $mp3tag->album);
-    query(q{ update albums set
-               album_year = max(album_year, ?)
-                 where album_id = ?; },
           $mp3tag->year,
-          $album_id);
-
-    query(q{ insert into songs (song_filepath, song_name, artist_id)
-               values (?, ?, ?); },
           $mp3_filepath,
           $mp3tag->title,
-          $artist_id);
-    my $song_id = last_insert_id();
-
-    query(q{ insert into songs_in_album (album_id, song_id, track_number)
-               values (?, ?, ?); },
-          $album_id,
-          $song_id,
-          $mp3tag->track1);
-
-    query(q{ insert into songs_in_panel (album_id, panel_id, song_id)
-               values (?, ?, ?); },
-          $album_id,
-          $panel_id,
-          $song_id);
+          $mp3tag->track1,
+          $panel_id);
   }
 }
 
