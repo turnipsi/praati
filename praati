@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.33 2014/03/08 10:45:03 je Exp $
+# $Id: praati,v 1.34 2014/03/08 11:08:24 je Exp $
 
 =pod
 
@@ -127,7 +127,7 @@ package Praati::Model {
   use Exporter qw(import);
   use File::Glob qw(bsd_glob);
 
-  our @EXPORT = qw(last_insert_id one_value query rows);
+  our @EXPORT = qw(last_insert_id one_value query records rows);
 
   our $DB;
 
@@ -334,7 +334,7 @@ package Praati::Model {
 
   sub rows {
     my ($sql, @bind_values) = @_;
-    $DB->selectall_arrayref($sql, undef, @bind_values);
+    $DB->selectall_arrayref($sql, { Slice => {} }, @bind_values);
   }
 
   sub test { @{ rows(@_) }  >  0; }
@@ -575,6 +575,7 @@ package Praati::View {
     my @query_methods = qw(a
                            end_html
                            form
+                           li
                            meta
                            p
                            path_info
@@ -584,7 +585,8 @@ package Praati::View {
                            table
                            td
                            textfield
-                           Tr);
+                           Tr
+                           ul);
 
     foreach my $method (@query_methods) {
       no strict 'refs';
@@ -750,7 +752,16 @@ package Praati::View {
   }
 
   sub page_panels {
-    page( p('The panels page.') );
+    my $panels = rows(q{ select * from panels order by panel_name; });
+
+    my @items = map {
+                  my $link = link_to('panels/' . $_->{panel_id});
+                  a({ -href => $link }, $_->{panel_name});
+                } @$panels;
+
+    page(
+      p('Available panels are:')
+      . ul( li(\@items) ));
   }
 }
 
