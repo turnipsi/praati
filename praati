@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.32 2014/03/08 10:19:39 je Exp $
+# $Id: praati,v 1.33 2014/03/08 10:45:03 je Exp $
 
 =pod
 
@@ -218,6 +218,26 @@ package Praati::Model {
         primary key(panel_id, song_id)
       );
 
+      create table if not exists song_ratings (
+        song_rating_id      integer       primary key not null,
+        song_rating_comment varchar(4096) not null,
+        song_id             integer       not null references songs(song_id),
+        user_id             integer       not null references users(user_id),
+
+        unique(song_id, user_id)
+      );
+
+      create table if not exists song_rating_values (
+        song_rating_value_id    integer    primary key not null,
+        song_rating_value_value decimal(2) not null
+          check(                                  0 <= song_rating_value_value
+                and         song_rating_value_value <= 10
+                and (song_rating_value_value % 0.5) == 0),
+
+        song_rating_id integer unique not null
+          references song_ratings(song_rating_id)
+      );
+
       -- create views
 
       create view if not exists songinfos
@@ -226,6 +246,10 @@ package Praati::Model {
           join songs_in_panel using (song_id)
           join songs_in_album using (album_id, song_id)
           join albums         using (album_id);
+
+      create view if not exists song_ratings_with_values
+        as select * from song_rating_values
+          join song_ratings using (song_rating_id);
 
       -- create triggers
 
