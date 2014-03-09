@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.34 2014/03/08 11:08:24 je Exp $
+# $Id: praati,v 1.35 2014/03/09 19:29:23 je Exp $
 
 =pod
 
@@ -30,7 +30,8 @@ A sample Apache configuration:
                File::Find        \
                File::Glob        \
                MP3::Tag          \
-               POSIX
+               POSIX             \
+               Tie::Hash::NamedCapture
     PerlSendHeader On
     PerlSetVar PerlRunOnce On
     SetHandler perl-script
@@ -127,7 +128,12 @@ package Praati::Model {
   use Exporter qw(import);
   use File::Glob qw(bsd_glob);
 
-  our @EXPORT = qw(last_insert_id one_value query records rows);
+  our @EXPORT = qw(last_insert_id
+                   one_record
+                   one_value
+                   query
+                   records
+                   records_by_key);
 
   our $DB;
 
@@ -294,8 +300,9 @@ package Praati::Model {
 
     foreach my $musicdir (@musicdirs) {
       transaction(sub {
-        my $panels = rows(q{ select * from panels where panel_musicpath = ?; },
-                          $musicdir);
+        my $panels
+          = records(q{ select * from panels where panel_musicpath = ?; },
+                    $musicdir);
 
         if (@$panels == 0) {
           Praati::Model::Musicscan::init_panel($musicdir);
@@ -306,12 +313,16 @@ package Praati::Model {
 
   # DBI helpers
 
+  sub columns {
+    my ($sql, @bind_values) = @_;
+    $DB->selectcol_arrayref($sql, {}, @bind_values);
+  }
+
   sub last_insert_id { $DB->last_insert_id('', '', '', ''); }
 
-  sub one_value {
-    my ($sql, @bind_values) = @_;
-    my $columns = $DB->selectcol_arrayref($sql, {}, @bind_values);
-    my $count = scalar(@$columns);
+  sub one_exactly {
+    my ($values) = @_;
+    my $count = scalar(@$values);
 
     if ($count != 1) {
       error(
@@ -319,8 +330,11 @@ package Praati::Model {
         type    => 'not one');
     }
 
-    $columns->[0];
+    $values->[0];
   }
+
+  sub one_record { one_exactly( records(@_)    ); }
+  sub one_value  { one_exactly( columns(@_) ); }
 
   sub query {
     my ($sql, @bind_values) = @_;
@@ -328,16 +342,16 @@ package Praati::Model {
   }
 
   sub records {
-    my ($key, $sql, @bind_values) = @_;
-    $DB->selectall_hashref($sql, $key, undef, @bind_values);
-  }
-
-  sub rows {
     my ($sql, @bind_values) = @_;
     $DB->selectall_arrayref($sql, { Slice => {} }, @bind_values);
   }
 
-  sub test { @{ rows(@_) }  >  0; }
+  sub records_by_key {
+    my ($key, $sql, @bind_values) = @_;
+    $DB->selectall_hashref($sql, $key, undef, @bind_values);
+  }
+
+  sub test { @{ records(@_) }  >  0; }
 
   sub transaction {
     my ($fn) = @_;
@@ -365,7 +379,7 @@ package Praati::Model {
   }
 
   sub debug_query {
-    # warn d(rows('select * from albums'));
+    # warn d(records('select * from albums'));
   }
 
   # user handling
@@ -751,11 +765,19 @@ package Praati::View {
     page( p('You are not logged in.') );
   }
 
+  sub page_panel_ratings_by_user {
+    my ($panel_id) = @_;
+    my $panel = one_record(q{ select * from panels where panel_id = ?; },
+                           $panel_id);
+
+    page( p(sprintf('This panel is "%s".', $panel->{panel_name})) );
+  }
+
   sub page_panels {
-    my $panels = rows(q{ select * from panels order by panel_name; });
+    my $panels = records(q{ select * from panels order by panel_name; });
 
     my @items = map {
-                  my $link = link_to('panels/' . $_->{panel_id});
+                  my $link = link_to('panel/' . $_->{panel_id});
                   a({ -href => $link }, $_->{panel_name});
                 } @$panels;
 
@@ -826,7 +848,17 @@ package Praati::Controller {
       m|^/logout$|   ? logout_controller()   :
       m|^/main$|     ? main_controller()     : # XXX do we need this at all?
       m|^/new_user$| ? new_user_controller() :
-      m|^/panels$|   ? panels_controller()   :
+      m|^/panels$|   ? do {
+                         # XXX restrict to roles qw(admin critic)
+                         panels_controller();
+                       } :
+
+      m|^/panel/(?<panel_id>\d+)$|
+        ? do {
+            # XXX restrict to roles qw(admin critic)
+            panel_ratings_by_user_controller($+{panel_id});
+          }
+        :
 
         no_such_page()
     );
@@ -955,6 +987,11 @@ package Praati::Controller {
   sub no_such_page {
     response(page   => 'No such page.',
              status => 404);
+  }
+
+  sub panel_ratings_by_user_controller {
+    my ($panel_id) = @_;
+    Praati::View::page_panel_ratings_by_user($panel_id);
   }
 
   sub panels_controller {
