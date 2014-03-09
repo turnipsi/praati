@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.35 2014/03/09 19:29:23 je Exp $
+# $Id: praati,v 1.36 2014/03/09 19:43:04 je Exp $
 
 =pod
 
@@ -73,6 +73,8 @@ package Praati {
 
 package Praati::Error {
   use Class::Struct __PACKAGE__, { message => '$', type => '$' };
+
+  use overload q{""} => sub { $_[0]->message; };
 }
 
 
@@ -766,10 +768,7 @@ package Praati::View {
   }
 
   sub page_panel_ratings_by_user {
-    my ($panel_id) = @_;
-    my $panel = one_record(q{ select * from panels where panel_id = ?; },
-                           $panel_id);
-
+    my ($panel) = @_;
     page( p(sprintf('This panel is "%s".', $panel->{panel_name})) );
   }
 
@@ -794,6 +793,7 @@ package Praati::View {
 
 package Praati::Controller {
   Praati->import;
+  Praati::Model->import;
 
   use BSD::arc4random qw(arc4random_bytes);
   use CGI::Pretty qw(-any);
@@ -991,7 +991,17 @@ package Praati::Controller {
 
   sub panel_ratings_by_user_controller {
     my ($panel_id) = @_;
-    Praati::View::page_panel_ratings_by_user($panel_id);
+    my $panel = eval {
+                  one_record(q{ select * from panels where panel_id = ?; },
+                             $panel_id);
+                };
+    my $err = $@;
+    if ($err) {
+      return no_such_page() if blessed($err) && $err->type eq 'not one';
+      die $err;
+    }
+
+    Praati::View::page_panel_ratings_by_user($panel);
   }
 
   sub panels_controller {
