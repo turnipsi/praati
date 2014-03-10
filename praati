@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.36 2014/03/09 19:43:04 je Exp $
+# $Id: praati,v 1.37 2014/03/10 19:40:55 je Exp $
 
 =pod
 
@@ -29,6 +29,7 @@ A sample Apache configuration:
                Encode::Unicode   \
                File::Find        \
                File::Glob        \
+               List::MoreUtils   \
                MP3::Tag          \
                POSIX             \
                Tie::Hash::NamedCapture
@@ -54,9 +55,10 @@ package Praati {
   use Data::Dumper;
   use Exporter qw(import);
   use File::Find;
+  use List::MoreUtils qw(any);
   use Scalar::Util qw(blessed);
 
-  our @EXPORT = qw(blessed d error find_files);
+  our @EXPORT = qw(any blessed d error find_files);
 
   sub d { Dumper(@_); }
   sub error { die Praati::Error->new(@_); }
@@ -104,12 +106,14 @@ package Praati::Controller {
   use Exporter qw(import);
   our @EXPORT = qw(add_ui_error
                    check_user_session_key
+                   get_session_user_role
                    query_method
                    response
                    session_user);
 
   sub add_ui_error;
   sub check_user_session_key;
+  sub get_session_user_role;
   sub query_method;
   sub response;
   sub session_user;
@@ -437,7 +441,7 @@ package Praati::Model {
   }
 
   sub new_user_role {
-    'admin'; # XXX
+    'admin'; # XXX qw(admin critic) are possible choices...
   }
 
   sub verify_user_password {
@@ -638,13 +642,7 @@ package Praati::View {
   }
 
   sub menu {
-    my $session_user = session_user();
-
-    my $user_role = $session_user
-                      ? one_value(q{ select user_role from users
-                                       where user_id = ?; },
-                                  $session_user)
-                      : 'anonymous';
+    my $user_role = get_session_user_role();
 
     my $pages_by_role = {
       admin     => [ qw(main          panels       logout) ],
@@ -784,6 +782,10 @@ package Praati::View {
       p('Available panels are:')
       . ul( li(\@items) ));
   }
+
+  sub page_unauthorized_access {
+    standard_page( p('Access unauthorized.') );
+  }
 }
 
 
@@ -836,12 +838,17 @@ package Praati::Controller {
 
   sub response { Praati::Controller::Response->new(@_); }
 
+  sub unauthorized_access {
+    response(page   => Praati::View::page_unauthorized_access(),
+             status => 403);
+  }
+
   sub url_dispatch {
     my ($path_info) = @_;
 
     local $_ = $path_info;
 
-    (
+    my $page = eval {
       m|^$|          ? redirect('/main')     :
       m|^/$|         ? redirect('/main')     :
       m|^/login$|    ? login_controller()    :
@@ -849,19 +856,28 @@ package Praati::Controller {
       m|^/main$|     ? main_controller()     : # XXX do we need this at all?
       m|^/new_user$| ? new_user_controller() :
       m|^/panels$|   ? do {
-                         # XXX restrict to roles qw(admin critic)
+                         restrict_to_roles( qw(admin critic) );
                          panels_controller();
                        } :
 
       m|^/panel/(?<panel_id>\d+)$|
         ? do {
-            # XXX restrict to roles qw(admin critic)
+            restrict_to_roles( qw(admin critic) );
             panel_ratings_by_user_controller($+{panel_id});
           }
         :
 
         no_such_page()
-    );
+    };
+    my $err = $@;
+
+    if ($err) {
+      return unauthorized_access()
+        if blessed($err) && $err->type eq 'unauthorized access';
+      die $err;
+    }
+
+    $page;
   }
 
   sub add_ui_error {
@@ -881,6 +897,23 @@ package Praati::Controller {
   sub check_user_session_key {
     my ($user_session_key) = @_;
     $user_session_key && $user_session_key =~ /^[0-9a-f]{40}$/;
+  }
+
+  sub get_session_user_role {
+    $Session_user
+      ? one_value(q{ select user_role from users where user_id = ?; },
+                  $Session_user)
+      : 'anonymous';
+  }
+
+  sub restrict_to_roles {
+    my @roles = @_;
+    my $session_user_role = get_session_user_role();
+
+    return 1 if any(sub { $session_user_role eq $_ }, @roles);
+
+    error(message => 'User is not allowed to access this resource.',
+          type    => 'unauthorized access');
   }
 
   sub session_user { $Session_user; }
