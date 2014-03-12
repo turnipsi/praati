@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.38 2014/03/12 20:14:47 je Exp $
+# $Id: praati,v 1.39 2014/03/12 20:18:19 je Exp $
 
 =pod
 
@@ -74,9 +74,21 @@ package Praati {
 }
 
 package Praati::Error {
+  Praati->import;
+
   use Class::Struct __PACKAGE__, { message => '$', type => '$' };
 
   use overload q{""} => sub { $_[0]->message; };
+
+  sub no_such_page {
+    error(message => 'No such page.',
+          type    => 'no such page');
+  }
+
+  sub unauthorized_access {
+    error(message => 'User is not allowed to access this resource.',
+          type    => 'unauthorized access');
+  }
 }
 
 
@@ -107,11 +119,9 @@ package Praati::Controller {
   our @EXPORT = qw(add_ui_error
                    check_user_session_key
                    get_session_user_role
-                   no_such_page_error
                    query_method
                    response
-                   session_user
-                   unauthorized_access_error);
+                   session_user);
 
   sub add_ui_error;
   sub check_user_session_key;
@@ -780,7 +790,7 @@ package Praati::View {
                 };
     my $err = $@;
     if ($err) {
-      no_such_page_error() if blessed($err) && $err->type eq 'not one';
+      Praati::Error::no_such_page() if blessed($err) && $err->type eq 'not one';
       die $err;
     }
 
@@ -879,7 +889,7 @@ package Praati::Controller {
           }
         :
 
-        no_such_page_error()
+        Praati::Error::no_such_page()
     };
     my $err = $@;
 
@@ -929,23 +939,11 @@ package Praati::Controller {
 
     return 1 if any(sub { $session_user_role eq $_ }, @roles);
 
-    unauthorized_access_error();
+    Praati::Error::unauthorized_access();
   }
 
 
   sub session_user { $Session_user; }
-
-  # errors
-
-  sub no_such_page_error {
-    error(message => 'No such page.',
-          type    => 'no such page');
-  }
-
-  sub unauthorized_access_error {
-    error(message => 'User is not allowed to access this resource.',
-          type    => 'unauthorized access');
-  }
 
   #
   # controllers for pages
