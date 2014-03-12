@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.37 2014/03/10 19:40:55 je Exp $
+# $Id: praati,v 1.38 2014/03/12 20:14:47 je Exp $
 
 =pod
 
@@ -13,25 +13,25 @@ A sample Apache configuration:
   <Directory /users/*/praati>
     Options +ExecCGI
     PerlHandler Apache::PerlRun
-    PerlModule autodie           \
-               diagnostics       \
-               BSD::arc4random   \
-               CGI::Cookie       \
-               CGI::Pretty       \
-               Class::Struct     \
-               Crypt::SaltedHash \
-               Data::Dumper      \
-               DBD::SQLite       \
-               DBI               \
-               Digest::SHA       \
-               Email::Valid      \
-               Encode            \
-               Encode::Unicode   \
-               File::Find        \
-               File::Glob        \
-               List::MoreUtils   \
-               MP3::Tag          \
-               POSIX             \
+    PerlModule autodie                 \
+               diagnostics             \
+               BSD::arc4random         \
+               CGI::Cookie             \
+               CGI::Pretty             \
+               Class::Struct           \
+               Crypt::SaltedHash       \
+               Data::Dumper            \
+               DBD::SQLite             \
+               DBI                     \
+               Digest::SHA             \
+               Email::Valid            \
+               Encode                  \
+               Encode::Unicode         \
+               File::Find              \
+               File::Glob              \
+               List::MoreUtils         \
+               MP3::Tag                \
+               POSIX                   \
                Tie::Hash::NamedCapture
     PerlSendHeader On
     PerlSetVar PerlRunOnce On
@@ -107,9 +107,11 @@ package Praati::Controller {
   our @EXPORT = qw(add_ui_error
                    check_user_session_key
                    get_session_user_role
+                   no_such_page_error
                    query_method
                    response
-                   session_user);
+                   session_user
+                   unauthorized_access_error);
 
   sub add_ui_error;
   sub check_user_session_key;
@@ -761,12 +763,27 @@ package Praati::View {
     page( p('Could not log out: ' . $errors->{'*'}) );
   }
 
+  sub page_no_such_page {
+    standard_page( p('No such page.') );
+  }
+
   sub page_not_logged_in {
     page( p('You are not logged in.') );
   }
 
   sub page_panel_ratings_by_user {
-    my ($panel) = @_;
+    my ($panel_id) = @_;
+
+    my $panel = eval {
+                  one_record(q{ select * from panels where panel_id = ?; },
+                             $panel_id);
+                };
+    my $err = $@;
+    if ($err) {
+      no_such_page_error() if blessed($err) && $err->type eq 'not one';
+      die $err;
+    }
+
     page( p(sprintf('This panel is "%s".', $panel->{panel_name})) );
   }
 
@@ -838,11 +855,6 @@ package Praati::Controller {
 
   sub response { Praati::Controller::Response->new(@_); }
 
-  sub unauthorized_access {
-    response(page   => Praati::View::page_unauthorized_access(),
-             status => 403);
-  }
-
   sub url_dispatch {
     my ($path_info) = @_;
 
@@ -867,13 +879,18 @@ package Praati::Controller {
           }
         :
 
-        no_such_page()
+        no_such_page_error()
     };
     my $err = $@;
 
     if ($err) {
-      return unauthorized_access()
-        if blessed($err) && $err->type eq 'unauthorized access';
+      if (blessed($err)) {
+        return no_such_page_controller()
+          if $err->type eq 'no such page';
+
+        return unauthorized_access_controller()
+          if $err->type eq 'unauthorized access';
+      }
       die $err;
     }
 
@@ -912,11 +929,23 @@ package Praati::Controller {
 
     return 1 if any(sub { $session_user_role eq $_ }, @roles);
 
+    unauthorized_access_error();
+  }
+
+
+  sub session_user { $Session_user; }
+
+  # errors
+
+  sub no_such_page_error {
+    error(message => 'No such page.',
+          type    => 'no such page');
+  }
+
+  sub unauthorized_access_error {
     error(message => 'User is not allowed to access this resource.',
           type    => 'unauthorized access');
   }
-
-  sub session_user { $Session_user; }
 
   #
   # controllers for pages
@@ -1017,28 +1046,23 @@ package Praati::Controller {
     Praati::View::page_new_user($errors);
   }
 
-  sub no_such_page {
-    response(page   => 'No such page.',
+  sub no_such_page_controller {
+    response(page   => Praati::View::page_no_such_page(),
              status => 404);
   }
 
   sub panel_ratings_by_user_controller {
     my ($panel_id) = @_;
-    my $panel = eval {
-                  one_record(q{ select * from panels where panel_id = ?; },
-                             $panel_id);
-                };
-    my $err = $@;
-    if ($err) {
-      return no_such_page() if blessed($err) && $err->type eq 'not one';
-      die $err;
-    }
-
-    Praati::View::page_panel_ratings_by_user($panel);
+    Praati::View::page_panel_ratings_by_user($panel_id);
   }
 
   sub panels_controller {
     Praati::View::page_panels();
+  }
+
+  sub unauthorized_access_controller {
+    response(page   => Praati::View::page_unauthorized_access(),
+             status => 403);
   }
 }
 
