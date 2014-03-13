@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.39 2014/03/12 20:18:19 je Exp $
+# $Id: praati,v 1.40 2014/03/13 19:47:22 je Exp $
 
 =pod
 
@@ -607,6 +607,8 @@ package Praati::View {
     my @query_methods = qw(a
                            end_html
                            form
+                           h1
+                           h2
                            li
                            meta
                            p
@@ -689,6 +691,27 @@ package Praati::View {
       ? td({ -colspan => $colspan },
            join(' ' => @{ $errors->{ $name } }))
       : ();
+  }
+
+  #
+  # forms
+  #
+
+  sub form_panel_ratings_by_user {
+    my ($panel_id, $user_id) = @_;
+
+    # XXX albums in panel could be a view?
+    my $albums = records(q{ select distinct albums.* from albums
+                              join songs_in_panel using (album_id)
+                                where panel_id = ?
+                              order by album_year; },
+                         $panel_id);
+
+    my @album_rating_tables
+      = map { table_album_ratings_by_user($_, $panel_id) }
+          @$albums;
+
+    p( join('' => @album_rating_tables) );
   }
 
   #
@@ -794,7 +817,12 @@ package Praati::View {
       die $err;
     }
 
-    page( p(sprintf('This panel is "%s".', $panel->{panel_name})) );
+    my $panel_ratings_form = form_panel_ratings_by_user($panel_id,
+                                                        session_user());
+
+    page(
+      p(sprintf('This panel is "%s".', $panel->{panel_name}))
+      . $panel_ratings_form);
   }
 
   sub page_panels {
@@ -812,6 +840,17 @@ package Praati::View {
 
   sub page_unauthorized_access {
     standard_page( p('Access unauthorized.') );
+  }
+
+  #
+  # tables
+  #
+
+  sub table_album_ratings_by_user {
+    my ($album, $panel_id) = @_;
+
+    h2($album->{album_name});
+    # XXX
   }
 }
 
