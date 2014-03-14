@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.41 2014/03/14 19:47:29 je Exp $
+# $Id: praati,v 1.42 2014/03/14 20:13:07 je Exp $
 
 =pod
 
@@ -58,7 +58,9 @@ package Praati {
   use List::MoreUtils qw(any);
   use Scalar::Util qw(blessed);
 
-  our @EXPORT = qw(any blessed d error find_files);
+  our @EXPORT = qw(any blessed concat d error find_files);
+
+  sub concat { join('' => @_); }
 
   sub d { Dumper(@_); }
   sub error { die Praati::Error->new(@_); }
@@ -610,6 +612,7 @@ package Praati::View {
 
   BEGIN {
     my @query_methods = qw(a
+                           div
                            end_html
                            form
                            h1
@@ -710,10 +713,11 @@ package Praati::View {
                          $panel_id);
 
     my @album_rating_tables
-      = map { table_album_ratings_by_user($_, $panel_id) }
+      = map { h1($_->{album_name})
+              . table_album_ratings_by_user($_, $panel_id, $user_id) }
           @$albums;
 
-    p( join('' => @album_rating_tables) );
+    div( concat(@album_rating_tables) );
   }
 
   #
@@ -849,10 +853,17 @@ package Praati::View {
   #
 
   sub table_album_ratings_by_user {
-    my ($album, $panel_id) = @_;
+    my ($album, $panel_id, $user_id) = @_;
 
-    h2($album->{album_name});
-    # XXX
+    # XXX should list ratings by user as well
+    my $songs = records(q{ select * from songinfos
+                             where album_id = ? and panel_id = ?; },
+                        $album->{album_id},
+                        $panel_id);
+
+    my @tablerows = map { td([ $_->{artist_name}, $_->{song_name} ]) } @$songs;
+
+    concat( table( Tr(\@tablerows) ) );
   }
 }
 
