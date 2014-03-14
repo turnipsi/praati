@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.40 2014/03/13 19:47:22 je Exp $
+# $Id: praati,v 1.41 2014/03/14 19:47:29 je Exp $
 
 =pod
 
@@ -226,7 +226,7 @@ package Praati::Model {
         artist_name varchar(256) unique not null
       );
 
-      create table if not exists songs_in_album (
+      create table if not exists songs_in_albums (
         album_id     integer not null references albums(album_id),
         song_id      integer not null references songs(song_id),
         track_number integer not null,
@@ -234,7 +234,7 @@ package Praati::Model {
         primary key(album_id, song_id)
       );
 
-      create table if not exists songs_in_panel (
+      create table if not exists songs_in_panels (
         album_id integer not null references albums(album_id),
         panel_id integer not null references panels(panel_id),
         song_id  integer not null references songs(song_id),
@@ -266,14 +266,19 @@ package Praati::Model {
 
       create view if not exists songinfos
         as select * from songs
-          join artists        using (artist_id)
-          join songs_in_panel using (song_id)
-          join songs_in_album using (album_id, song_id)
-          join albums         using (album_id);
+          join artists         using (artist_id)
+          join songs_in_panels using (song_id)
+          join songs_in_albums using (album_id, song_id)
+          join albums          using (album_id);
 
       create view if not exists song_ratings_with_values
         as select * from song_rating_values
           join song_ratings using (song_rating_id);
+
+      create view if not exists albums_in_panels
+        as select distinct albums.*, songs_in_panels.panel_id
+             from albums
+               join songs_in_panels using (album_id);
 
       -- create triggers
 
@@ -297,14 +302,14 @@ package Praati::Model {
                 from artists where artist_name = new.artist_name;
 
             -- album_name and song_filepath are unique
-            insert into songs_in_album (album_id, song_id, track_number)
+            insert into songs_in_albums (album_id, song_id, track_number)
               select album_id, song_id, new.track_number
                 from albums join songs
                   where    album_name = new.album_name
                     and song_filepath = new.song_filepath;
 
             -- album_name and song_filepath are unique
-            insert into songs_in_panel (album_id, panel_id, song_id)
+            insert into songs_in_panels (album_id, panel_id, song_id)
               select album_id, new.panel_id, song_id
                 from albums join songs
                   where    album_name = new.album_name
@@ -700,10 +705,7 @@ package Praati::View {
   sub form_panel_ratings_by_user {
     my ($panel_id, $user_id) = @_;
 
-    # XXX albums in panel could be a view?
-    my $albums = records(q{ select distinct albums.* from albums
-                              join songs_in_panel using (album_id)
-                                where panel_id = ?
+    my $albums = records(q{ select * from albums_in_panels where panel_id = ?
                               order by album_year; },
                          $panel_id);
 
