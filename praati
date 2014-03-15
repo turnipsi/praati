@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.42 2014/03/14 20:13:07 je Exp $
+# $Id: praati,v 1.43 2014/03/15 08:48:04 je Exp $
 
 =pod
 
@@ -857,7 +857,8 @@ package Praati::View {
 
     # XXX should list ratings by user as well
     my $songs = records(q{ select * from songinfos
-                             where album_id = ? and panel_id = ?; },
+                             where album_id = ? and panel_id = ?
+                               order by track_number; },
                         $album->{album_id},
                         $panel_id);
 
