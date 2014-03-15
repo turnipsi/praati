@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.43 2014/03/15 08:48:04 je Exp $
+# $Id: praati,v 1.44 2014/03/15 08:49:06 je Exp $
 
 =pod
 
@@ -256,9 +256,8 @@ package Praati::Model {
       create table if not exists song_rating_values (
         song_rating_value_id    integer    primary key not null,
         song_rating_value_value decimal(2) not null
-          check(                                  0 <= song_rating_value_value
-                and         song_rating_value_value <= 10
-                and (song_rating_value_value % 0.5) == 0),
+          check(                          0 <= song_rating_value_value
+                and song_rating_value_value <= 10)
 
         song_rating_id integer unique not null
           references song_ratings(song_rating_id)
