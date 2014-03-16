@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.46 2014/03/16 19:50:38 je Exp $
+# $Id: praati,v 1.47 2014/03/16 20:07:41 je Exp $
 
 =pod
 
@@ -872,7 +872,15 @@ package Praati::Controller {
 
   our ($Q, $Session_user);
 
+  our $Debugging = 1;
+
   sub main {
+    $Debugging
+      ? debugging_wrapper(\&handle_query)
+      : handle_query();
+  }
+
+  sub handle_query {
     $Q = CGI->new;
 
     eval {
@@ -890,6 +898,18 @@ package Praati::Controller {
 
     if ($error) {
       confess($error);
+    }
+  }
+
+  sub debugging_wrapper {
+    my ($fn) = @_;
+
+    eval { $fn->() };
+    my $err = $@;
+    if ($err) {
+      my $q = CGI->new;
+      print $q->header(),
+            $q->pre($err);
     }
   }
 
