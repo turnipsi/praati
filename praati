@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.44 2014/03/15 08:49:06 je Exp $
+# $Id: praati,v 1.45 2014/03/16 19:02:15 je Exp $
 
 =pod
 
@@ -16,6 +16,7 @@ A sample Apache configuration:
     PerlModule autodie                 \
                diagnostics             \
                BSD::arc4random         \
+               CGI::Carp               \
                CGI::Cookie             \
                CGI::Pretty             \
                Class::Struct           \
@@ -41,57 +42,10 @@ A sample Apache configuration:
 =cut
 
 use autodie;
-use diagnostics;
+# use diagnostics;
 use strict;
 use utf8;
 use warnings FATAL => qw(all);
-
-
-#
-# language extensions
-#
-
-package Praati {
-  use Data::Dumper;
-  use Exporter qw(import);
-  use File::Find;
-  use List::MoreUtils qw(any);
-  use Scalar::Util qw(blessed);
-
-  our @EXPORT = qw(any blessed concat d error find_files);
-
-  sub concat { join('' => @_); }
-
-  sub d { Dumper(@_); }
-  sub error { die Praati::Error->new(@_); }
-
-  sub find_files {
-    my ($check_fn, $dir) = @_;
-    my @files;
-    find({ no_chdir => 1,
-           wanted   => sub { push @files, $_ if $check_fn->(); } },
-         $dir);
-    @files;
-  }
-}
-
-package Praati::Error {
-  Praati->import;
-
-  use Class::Struct __PACKAGE__, { message => '$', type => '$' };
-
-  use overload q{""} => sub { $_[0]->message; };
-
-  sub no_such_page {
-    error(message => 'No such page.',
-          type    => 'no such page');
-  }
-
-  sub unauthorized_access {
-    error(message => 'User is not allowed to access this resource.',
-          type    => 'unauthorized access');
-  }
-}
 
 
 #
@@ -99,8 +53,6 @@ package Praati::Error {
 #
 
 package Praati::Config {
-  Praati->import;
-
   our $WWW_dir = '/'; # XXX in OpenBSD Apache chroot only...
 
   our $DB_dir       = 'db';
@@ -109,6 +61,27 @@ package Praati::Config {
   our $Music_path = "${WWW_dir}/${DB_dir}/music";
 
   our $User_session_hours = 12;
+}
+
+
+#
+# errors
+#
+
+package Praati::Error {
+  use Class::Struct __PACKAGE__, { message => '$', type => '$' };
+
+  use overload q{""} => sub { $_[0]->message; };
+
+  sub no_such_page {
+    __PACKAGE__->new(message => 'No such page.',
+                     type    => 'no such page');
+  }
+
+  sub unauthorized_access {
+    __PACKAGE__->new(message => 'User is not allowed to access this resource.',
+                     type    => 'unauthorized access');
+  }
 }
 
 
@@ -139,14 +112,15 @@ package Praati::Controller {
 #
 
 package Praati::Model {
-  Praati->import;
   Praati::Controller->import;
 
+  use CGI::Carp;
   use Crypt::SaltedHash;
   use DBI;
   use Email::Valid;
   use Exporter qw(import);
   use File::Glob qw(bsd_glob);
+  use Scalar::Util qw(blessed);
 
   our @EXPORT = qw(last_insert_id
                    one_record
@@ -257,7 +231,7 @@ package Praati::Model {
         song_rating_value_id    integer    primary key not null,
         song_rating_value_value decimal(2) not null
           check(                          0 <= song_rating_value_value
-                and song_rating_value_value <= 10)
+                and song_rating_value_value <= 10),
 
         song_rating_id integer unique not null
           references song_ratings(song_rating_id)
@@ -349,7 +323,7 @@ package Praati::Model {
     my $count = scalar(@$values);
 
     if ($count != 1) {
-      error(
+      Praati::Error->new(
         message => "Would be returning not exactly one value, but $count values",
         type    => 'not one');
     }
@@ -398,7 +372,7 @@ package Praati::Model {
         };
       };
 
-      die $db_error;
+      croak($db_error);
     }
   }
 
@@ -531,10 +505,11 @@ package Praati::Model {
 }
 
 package Praati::Model::Musicscan {
-  Praati->import;
   Praati::Model->import;
 
+  use CGI::Carp;
   use File::Basename;
+  use File::Find;
   use MP3::Tag;
 
   sub init_panel {
@@ -554,12 +529,21 @@ package Praati::Model::Musicscan {
     }
   }
 
+  sub find_files {
+    my ($check_fn, $dir) = @_;
+    my @files;
+    find({ no_chdir => 1,
+           wanted   => sub { push @files, $_ if $check_fn->(); } },
+         $dir);
+    @files;
+  }
+
   sub add_song {
     my ($panel_id, $mp3_filepath, $mp3tag) = @_;
 
     foreach my $field (qw(album artist title track1 year)) {
       unless ($mp3tag->$field) {
-        die "The mp3 file $mp3_filepath is missing $field";
+        croak("The mp3 file $mp3_filepath is missing $field");
       }
     }
 
@@ -584,8 +568,6 @@ package Praati::Model::Musicscan {
 }
 
 package Praati::Model::SQLite {
-  Praati->import;
-
   sub register { $Praati::Model::DB->sqlite_create_function(@_); }
 
   sub register_sqlite_functions {
@@ -605,9 +587,11 @@ package Praati::Model::SQLite {
 #
 
 package Praati::View {
-  Praati->import;
   Praati::Controller->import;
   Praati::Model->import;
+
+  use CGI::Carp;
+  use Scalar::Util qw(blessed);
 
   BEGIN {
     my @query_methods = qw(a
@@ -635,6 +619,8 @@ package Praati::View {
     }
   }
 
+  sub concat { join('' => @_); }
+
   sub link_if_not_this_page {
     my ($target) = @_;
 
@@ -647,7 +633,7 @@ package Praati::View {
     };
 
     my $description = $page_descriptions->{ $target };
-    die "No page description found for $target" unless $description;
+    croak("No page description found for $target") unless $description;
 
     "/$target" eq path_info()
       ? $description
@@ -672,7 +658,7 @@ package Praati::View {
     };
 
     my $pagelist = $pages_by_role->{ $user_role };
-    die "No pagelist found for $user_role" unless $pagelist;
+    croak("No pagelist found for $user_role") unless $pagelist;
 
     table(
       Tr(
@@ -819,7 +805,7 @@ package Praati::View {
     my $err = $@;
     if ($err) {
       Praati::Error::no_such_page() if blessed($err) && $err->type eq 'not one';
-      die $err;
+      croak($err);
     }
 
     my $panel_ratings_form = form_panel_ratings_by_user($panel_id,
@@ -873,11 +859,13 @@ package Praati::View {
 #
 
 package Praati::Controller {
-  Praati->import;
   Praati::Model->import;
 
   use BSD::arc4random qw(arc4random_bytes);
+  use CGI::Carp;
   use CGI::Pretty qw(-any);
+  use List::MoreUtils qw(any);
+  use Scalar::Util qw(blessed);
 
   $CGI::Pretty::INDENT = ' ' x 2;
 
@@ -893,14 +881,14 @@ package Praati::Controller {
       $Session_user = Praati::Model::find_session_user($user_session_key);
 
       my $response = url_dispatch( $Q->path_info );
-      $response->print($Q);
+      $response->printout($Q);
     };
     my $error = $@;
 
     Praati::Model::close();
 
     if ($error) {
-      die $error;
+      croak($error);
     }
   }
 
@@ -953,7 +941,7 @@ package Praati::Controller {
         return unauthorized_access_controller()
           if $err->type eq 'unauthorized access';
       }
-      die $err;
+      croak($err);
     }
 
     $page;
@@ -1117,8 +1105,6 @@ package Praati::Controller {
 }
 
 package Praati::Controller::Response {
-  Praati->import;
-
   use Class::Struct __PACKAGE__, {
     cookie       => '$',
     page         => '$',
@@ -1138,7 +1124,7 @@ package Praati::Controller::Response {
     . $self->page;
   }
 
-  sub print {
+  sub printout {
     my ($self, $q) = @_;
 
     my $content
@@ -1150,7 +1136,7 @@ package Praati::Controller::Response {
           ? $self->page_with_header($q)
           : undef;
 
-    die 'Not a sensible response object' unless defined $content;
+    croak('Not a sensible response object') unless defined $content;
 
     print $content;
   }
