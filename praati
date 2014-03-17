@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.47 2014/03/16 20:07:41 je Exp $
+# $Id: praati,v 1.48 2014/03/17 05:33:21 je Exp $
 
 =pod
 
@@ -696,7 +696,6 @@ package Praati::View {
     my $albums = records(q{ select * from albums_in_panels where panel_id = ?
                               order by album_year; },
                          $panel_id);
-    confess('oh no!');
 
     my @album_rating_tables
       = map { h1($_->{album_name})
@@ -872,7 +871,7 @@ package Praati::Controller {
 
   our ($Q, $Session_user);
 
-  our $Debugging = 1;
+  our $Debugging = 0;
 
   sub main {
     $Debugging
@@ -903,6 +902,8 @@ package Praati::Controller {
 
   sub debugging_wrapper {
     my ($fn) = @_;
+
+    warn "Debugging has been turned on, stacktraces end up to the browser.";
 
     eval { $fn->() };
     my $err = $@;
