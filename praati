@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.48 2014/03/17 05:33:21 je Exp $
+# $Id: praati,v 1.49 2014/03/17 19:57:06 je Exp $
 
 =pod
 
@@ -221,10 +221,11 @@ package Praati::Model {
       create table if not exists song_ratings (
         song_rating_id      integer       primary key not null,
         song_rating_comment varchar(4096) not null,
+        panel_id            integer       not null references panels(panel_id),
         song_id             integer       not null references songs(song_id),
         user_id             integer       not null references users(user_id),
 
-        unique(song_id, user_id)
+        unique(panel_id, song_id, user_id)
       );
 
       create table if not exists song_rating_values (
@@ -246,14 +247,14 @@ package Praati::Model {
           join songs_in_albums using (album_id, song_id)
           join albums          using (album_id);
 
-      create view if not exists song_ratings_with_values
-        as select * from song_rating_values
-          join song_ratings using (song_rating_id);
-
       create view if not exists albums_in_panels
         as select distinct albums.*, songs_in_panels.panel_id
              from albums
                join songs_in_panels using (album_id);
+
+      create view if not exists song_ratings_with_values
+        as select * from song_rating_values
+          join song_ratings using (song_rating_id);
 
       -- create triggers
 
@@ -831,6 +832,7 @@ package Praati::View {
 
   sub page_unauthorized_access {
     standard_page( p('Access unauthorized.') );
+
   }
 
   #
@@ -840,14 +842,26 @@ package Praati::View {
   sub table_album_ratings_by_user {
     my ($album, $panel_id, $user_id) = @_;
 
-    # XXX should list ratings by user as well
+    # XXX what about rating values?
     my $songs = records(q{ select * from songinfos
-                             where album_id = ? and panel_id = ?
-                               order by track_number; },
+                             left outer join song_ratings
+                               using (panel_id, song_id)
+                           where album_id = ?
+                             and panel_id = ?
+                             and (user_id = ? or user_id is null)
+                           order by track_number; },
                         $album->{album_id},
-                        $panel_id);
+                        $panel_id,
+                        $user_id);
 
-    my @tablerows = map { td([ $_->{artist_name}, $_->{song_name} ]) } @$songs;
+    my @tablerows
+      = map {
+          td([
+               $_->{artist_name},
+               $_->{song_name},
+               $_->{song_rating_comment} // 'no comment',
+             ])
+        } @$songs;
 
     concat( table( Tr(\@tablerows) ) );
   }
