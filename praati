@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.50 2014/03/17 20:24:36 je Exp $
+# $Id: praati,v 1.51 2014/03/18 19:56:09 je Exp $
 
 =pod
 
@@ -606,6 +606,7 @@ package Praati::View {
                            p
                            path_info
                            password_field
+                           popup_menu
                            start_html
                            submit
                            table
@@ -703,7 +704,8 @@ package Praati::View {
               . table_album_ratings_by_user($_, $panel_id, $user_id) }
           @$albums;
 
-    div( concat(@album_rating_tables) );
+    form({ -method => 'post' },
+         concat(@album_rating_tables));
   }
 
   #
@@ -832,7 +834,6 @@ package Praati::View {
 
   sub page_unauthorized_access {
     standard_page( p('Access unauthorized.') );
-
   }
 
   #
@@ -855,15 +856,45 @@ package Praati::View {
 
     my @tablerows
       = map {
+          my $rating_choice = song_rating_choice($_->{song_id},
+                                                 $_->{song_rating_value_value});
+          my $comment_field = textfield("$_->{song_id}.comment",
+                                        $_->{song_rating_comment} // '');
           td([
                $_->{artist_name},
                $_->{song_name},
-               $_->{song_rating_value_value} // '[no value]',
-               $_->{song_rating_comment}     // '[no comment]',
+               $rating_choice,
+               $comment_field,
+               submit(send_ratings => 'Send'),
              ])
         } @$songs;
 
     concat( table( Tr(\@tablerows) ) );
+  }
+
+  #
+  # other
+  #
+
+  our $No_song_rating_marker = '-';
+
+  sub song_rating_choice {
+    my ($song_id, $song_rating_value_value) = @_;
+    popup_menu("${song_id}.rating",
+               [ song_rating_values() ],
+               $song_rating_value_value // $No_song_rating_marker);
+  }
+
+  sub song_rating_values {
+    my $max_song_rating = 10.0;
+    my $step_size       =  0.5;
+
+    (
+      $No_song_rating_marker,
+      reverse(
+        map { sprintf('%.1f', $_ * $step_size) }
+          0 .. ($max_song_rating / $step_size))
+    );
   }
 }
 
