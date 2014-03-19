@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.51 2014/03/18 19:56:09 je Exp $
+# $Id: praati,v 1.52 2014/03/19 20:07:05 je Exp $
 
 =pod
 
@@ -74,13 +74,23 @@ package Praati::Error {
   use overload q{""} => sub { $_[0]->message; };
 
   sub no_such_page {
-    __PACKAGE__->new(message => 'No such page.',
-                     type    => 'no such page');
+    confess(
+      __PACKAGE__->new(message => 'No such page',
+                       type    => 'no such page'));
+  }
+
+  sub not_exactly_one {
+    my ($count) = @_;
+    confess(
+      __PACKAGE__->new(
+        message => "Would be returning not exactly one value, but $count values",
+        type    => 'not one'));
   }
 
   sub unauthorized_access {
-    __PACKAGE__->new(message => 'User is not allowed to access this resource.',
-                     type    => 'unauthorized access');
+    confess(
+      __PACKAGE__->new(message => 'User is not allowed to access this resource',
+                       type    => 'unauthorized access'));
   }
 }
 
@@ -323,11 +333,7 @@ package Praati::Model {
     my ($values) = @_;
     my $count = scalar(@$values);
 
-    if ($count != 1) {
-      Praati::Error->new(
-        message => "Would be returning not exactly one value, but $count values",
-        type    => 'not one');
-    }
+    if ($count != 1) { Praati::Error::not_exactly_one($count); }
 
     $values->[0];
   }
@@ -854,22 +860,28 @@ package Praati::View {
                         $panel_id,
                         $user_id);
 
-    my @tablerows
-      = map {
-          my $rating_choice = song_rating_choice($_->{song_id},
-                                                 $_->{song_rating_value_value});
-          my $comment_field = textfield("$_->{song_id}.comment",
-                                        $_->{song_rating_comment} // '');
-          td([
-               $_->{artist_name},
-               $_->{song_name},
-               $rating_choice,
-               $comment_field,
-               submit(send_ratings => 'Send'),
-             ])
-        } @$songs;
+    my @tablerows = map { tablerow_song_rating_by_user($_) } @$songs;
 
     concat( table( Tr(\@tablerows) ) );
+  }
+
+  sub tablerow_song_rating_by_user {
+    my ($song_with_rating) = @_;
+
+    my $rating_choice
+      = song_rating_choice($song_with_rating->{song_id},
+                           $song_with_rating->{song_rating_value_value});
+    my $comment_field
+      = textfield("$song_with_rating->{song_id}.comment",
+                  $song_with_rating->{song_rating_comment} // '');
+
+    td([
+         $song_with_rating->{artist_name},
+         $song_with_rating->{song_name},
+         $rating_choice,
+         $comment_field,
+         submit(send_ratings => 'Send'),
+       ]);
   }
 
   #
@@ -948,7 +960,7 @@ package Praati::Controller {
   sub debugging_wrapper {
     my ($fn) = @_;
 
-    warn "Debugging has been turned on, stacktraces end up to the browser.";
+    warn "Debugging has been turned on, stacktraces end up to the browser";
 
     eval { $fn->() };
     my $err = $@;
@@ -1158,6 +1170,8 @@ package Praati::Controller {
 
   sub panel_ratings_by_user_controller {
     my ($panel_id) = @_;
+
+    # ...
     Praati::View::page_panel_ratings_by_user($panel_id);
   }
 
