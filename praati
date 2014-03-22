@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.54 2014/03/22 12:16:45 je Exp $
+# $Id: praati,v 1.55 2014/03/22 19:20:20 je Exp $
 
 =pod
 
@@ -548,7 +548,7 @@ package Praati::Model {
   #
 
   sub update_user_ratings {
-    my ($errors, $panel_id, $user_id, $song_ratings) = @_;
+    my ($panel_id, $user_id, $song_ratings) = @_;
 
     transaction(sub {
       while (my ($song_id, $song_rating) = each(%$song_ratings)) {
@@ -749,11 +749,10 @@ package Praati::View {
   }
 
   sub maybe_error {
-    my ($name, $errors, $colspan) = @_;
+    my ($name, $errors, $fn) = @_;
 
     defined($errors->{ $name })
-      ? td({ -colspan => $colspan },
-           join(' ' => @{ $errors->{ $name } }))
+      ? $fn->(@{ $errors->{ $name } })
       : ();
   }
 
@@ -785,9 +784,11 @@ package Praati::View {
     my ($errors, $cookie) = @_;
 
     my $table_width = 2;
+    my $error_wrapper = sub { td({ -colspan => $table_width },
+                                 join(' ' => @_)); };
 
     my $tablerows = [
-      maybe_error('*' => $errors, $table_width),
+      maybe_error('*' => $errors, $error_wrapper),
 
       td([ 'email address:', textfield('user_email')         ]),
       td([ 'password:',      password_field('user_password') ]),
@@ -825,13 +826,16 @@ package Praati::View {
 
     my $table_width = 2;
 
-    my $tablerows = [
-      maybe_error('*' => $errors, $table_width),
+    my $error_wrapper = sub { td({ -colspan => $table_width },
+                                 join(' ' => @_)); };
 
-      maybe_error(user_email => $errors, $table_width),
+    my $tablerows = [
+      maybe_error('*' => $errors, $error_wrapper),
+
+      maybe_error(user_email => $errors, $error_wrapper),
       td([ 'email address:',  textfield('user_email')               ]),
 
-      maybe_error(user_name => $errors, $table_width),
+      maybe_error(user_name => $errors, $error_wrapper),
       td([ 'name:',           textfield('user_name')                ]),
 
       td([ 'password:',       password_field('user_password')       ]),
@@ -868,7 +872,7 @@ package Praati::View {
   }
 
   sub page_panel_ratings_by_user {
-    my ($panel_id) = @_;
+    my ($errors, $panel_id) = @_;
 
     my $panel = eval {
                   one_record(q{ select * from panels where panel_id = ?; },
@@ -885,6 +889,7 @@ package Praati::View {
 
     page(
       p(sprintf('This panel is "%s".', $panel->{panel_name}))
+      . (maybe_error('*', $errors, sub { p(join('' => @_)); }) // '')
       . $panel_ratings_form);
   }
 
@@ -1266,17 +1271,16 @@ package Praati::Controller {
       }
 
       eval {
-        Praati::Model::update_user_ratings($errors,
-                                           $panel_id,
+        Praati::Model::update_user_ratings($panel_id,
                                            session_user(),
                                            $song_ratings);
       };
-      my $err = $@;
-      # XXX ... handle errors
-      die $err if $err;
+      if ($@) {
+        add_unknown_ui_error($errors, '*', $@);
+      }
     }
 
-    Praati::View::page_panel_ratings_by_user($panel_id);
+    Praati::View::page_panel_ratings_by_user($errors, $panel_id);
   }
 
   sub panels_controller {
