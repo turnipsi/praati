@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.55 2014/03/22 19:20:20 je Exp $
+# $Id: praati,v 1.56 2014/03/22 19:29:04 je Exp $
 
 =pod
 
@@ -249,12 +249,22 @@ package Praati::Model {
       create table if not exists song_rating_values (
         song_rating_value_id    integer    primary key not null,
         song_rating_value_value decimal(2) not null
-          check(                          0 <= song_rating_value_value
-                and song_rating_value_value <= 10),
+          check(0 <= song_rating_value_value
+                 and song_rating_value_value <= 10),
 
         song_rating_id integer unique not null
           references song_ratings(song_rating_id)
             on delete cascade
+      );
+
+      create table if not exists song_rating_normalized_values (
+        song_rating_normalized_value_id    integer    primary key not null,
+        song_rating_normalized_value_value decimal(5) not null
+          check(0 <= song_rating_normalized_value_value
+                 and song_rating_normalized_value_value <= 10),
+
+        song_rating_value_id integer unique not null
+          references song_rating_values(song_rating_value_id)
       );
 
       -- create views
@@ -331,6 +341,14 @@ package Praati::Model {
                     and song_ratings.panel_id = new.panel_id
                     and song_ratings.song_id  = new.song_id
                     and song_ratings.user_id  = new.user_id;
+
+            delete from song_rating_normalized_values
+              where song_rating_value_id in (
+                select song_rating_value_id
+                   from song_ratings_with_values
+                     where panel_id = new.panel_id
+                       and  user_id = new.user_id
+              );
           end;
     });
   }
