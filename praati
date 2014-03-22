@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.53 2014/03/22 07:17:27 je Exp $
+# $Id: praati,v 1.54 2014/03/22 12:16:45 je Exp $
 
 =pod
 
@@ -63,6 +63,14 @@ package Praati::Config {
   our $User_session_hours = 12;
 }
 
+
+#
+# constants
+#
+
+package Praati::Constants {
+  use constant NO_SONG_RATING_MARKER => '-';
+}
 
 #
 # errors
@@ -246,6 +254,7 @@ package Praati::Model {
 
         song_rating_id integer unique not null
           references song_ratings(song_rating_id)
+            on delete cascade
       );
 
       -- create views
@@ -300,6 +309,28 @@ package Praati::Model {
                 from albums join songs
                   where    album_name = new.album_name
                     and song_filepath = new.song_filepath;
+          end;
+
+      create trigger if not exists insert_song_ratings_with_values
+        instead of insert on song_ratings_with_values
+          begin
+            insert or replace into song_ratings (song_rating_comment,
+                                                 panel_id,
+                                                 song_id,
+                                                 user_id)
+              values (new.song_rating_comment,
+                      new.panel_id,
+                      new.song_id,
+                      new.user_id);
+
+            insert or replace into song_rating_values (song_rating_value_value,
+                                                       song_rating_id)
+              select new.song_rating_value_value, song_ratings.song_rating_id
+                from song_ratings
+                  where new.song_rating_value_value is not null
+                    and song_ratings.panel_id = new.panel_id
+                    and song_ratings.song_id  = new.song_id
+                    and song_ratings.user_id  = new.user_id;
           end;
     });
   }
@@ -384,7 +415,9 @@ package Praati::Model {
   }
 
   sub debug_query {
-    # warn d(records('select * from albums'));
+    # use Data::Dumper;
+    # warn Dumper(records('select * from song_ratings_with_values
+    #                        where song_rating_value_value is not null'));
   }
 
   # user handling
@@ -508,6 +541,31 @@ package Praati::Model {
     my ($user_session_key) = @_;
     query(q{ delete from user_sessions where user_session_key = ?; },
           $user_session_key);
+  }
+
+  #
+  # user ratings handling
+  #
+
+  sub update_user_ratings {
+    my ($errors, $panel_id, $user_id, $song_ratings) = @_;
+
+    transaction(sub {
+      while (my ($song_id, $song_rating) = each(%$song_ratings)) {
+        query(q{ insert or replace into song_ratings_with_values
+                     (song_rating_comment,
+                      song_rating_value_value,
+                      panel_id,
+                      song_id,
+                      user_id)
+                   values (?, ?, ?, ?, ?); },
+              $song_rating->{rating_comment},
+              $song_rating->{rating_value},
+              $panel_id,
+              $song_id,
+              $user_id);
+      }
+    });
   }
 }
 
@@ -875,7 +933,7 @@ package Praati::View {
 
     my ($rating_form_id, $comment_form_id)
       = map { make_form_id(songs => $song_with_rating->{song_id}, $_) }
-          qw(rating comment);
+          qw(rating_value rating_comment);
 
     my $rating_choice
       = song_rating_choice($rating_form_id,
@@ -897,13 +955,15 @@ package Praati::View {
   # other
   #
 
-  our $No_song_rating_marker = '-';
-
   sub song_rating_choice {
     my ($rating_form_id, $song_rating_value_value) = @_;
+    my $value = defined $song_rating_value_value
+                 ? sprintf('%.1f', $song_rating_value_value)
+                 : Praati::Constants::NO_SONG_RATING_MARKER;
+
     popup_menu($rating_form_id,
                [ song_rating_values() ],
-               $song_rating_value_value // $No_song_rating_marker);
+               $value);
   }
 
   sub song_rating_values {
@@ -911,7 +971,7 @@ package Praati::View {
     my $step_size       =  0.5;
 
     (
-      $No_song_rating_marker,
+      Praati::Constants::NO_SONG_RATING_MARKER,
       reverse(
         map { sprintf('%.1f', $_ * $step_size) }
           0 .. ($max_song_rating / $step_size))
@@ -937,7 +997,7 @@ package Praati::Controller {
 
   our ($Q, $Session_user);
 
-  our $Debugging = 0;
+  our $Debugging = 1;
 
   sub main {
     $Debugging
@@ -1068,9 +1128,9 @@ package Praati::Controller {
   }
 
   sub get_session_user_role {
-    $Session_user
+    session_user()
       ? one_value(q{ select user_role from users where user_id = ?; },
-                  $Session_user)
+                  session_user())
       : 'anonymous';
   }
 
@@ -1197,8 +1257,23 @@ package Praati::Controller {
     my $errors = {};
 
     if ($p{send_ratings}) {
-      my $ids_with_fields = parse_form_ids_for_table(songs => \%p);
-      # ...
+      my $song_ratings = parse_form_ids_for_table(songs => \%p);
+      while (my ($song_id, $rating) = each %$song_ratings) {
+        if ($rating->{ rating_value }
+              eq Praati::Constants::NO_SONG_RATING_MARKER) {
+          $song_ratings->{ $song_id }{ rating_value } = undef;
+        }
+      }
+
+      eval {
+        Praati::Model::update_user_ratings($errors,
+                                           $panel_id,
+                                           session_user(),
+                                           $song_ratings);
+      };
+      my $err = $@;
+      # XXX ... handle errors
+      die $err if $err;
     }
 
     Praati::View::page_panel_ratings_by_user($panel_id);
