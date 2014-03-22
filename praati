@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.52 2014/03/19 20:07:05 je Exp $
+# $Id: praati,v 1.53 2014/03/22 07:17:27 je Exp $
 
 =pod
 
@@ -656,6 +656,11 @@ package Praati::View {
     "${target_prefix}${target}";
   }
 
+  sub make_form_id {
+    my ($table, $id, $field) = @_;
+    "${table}[${id}].${field}";
+  }
+
   sub menu {
     my $user_role = get_session_user_role();
 
@@ -868,18 +873,22 @@ package Praati::View {
   sub tablerow_song_rating_by_user {
     my ($song_with_rating) = @_;
 
+    my ($rating_form_id, $comment_form_id)
+      = map { make_form_id(songs => $song_with_rating->{song_id}, $_) }
+          qw(rating comment);
+
     my $rating_choice
-      = song_rating_choice($song_with_rating->{song_id},
+      = song_rating_choice($rating_form_id,
                            $song_with_rating->{song_rating_value_value});
-    my $comment_field
-      = textfield("$song_with_rating->{song_id}.comment",
+    my $comment
+      = textfield($comment_form_id,
                   $song_with_rating->{song_rating_comment} // '');
 
     td([
          $song_with_rating->{artist_name},
          $song_with_rating->{song_name},
          $rating_choice,
-         $comment_field,
+         $comment,
          submit(send_ratings => 'Send'),
        ]);
   }
@@ -891,8 +900,8 @@ package Praati::View {
   our $No_song_rating_marker = '-';
 
   sub song_rating_choice {
-    my ($song_id, $song_rating_value_value) = @_;
-    popup_menu("${song_id}.rating",
+    my ($rating_form_id, $song_rating_value_value) = @_;
+    popup_menu($rating_form_id,
                [ song_rating_values() ],
                $song_rating_value_value // $No_song_rating_marker);
   }
@@ -1024,6 +1033,19 @@ package Praati::Controller {
     }
 
     $page;
+  }
+
+  sub parse_form_ids_for_table {
+    my ($table, $params) = @_;
+    my %hash;
+
+    while (my ($key, $value) = each %$params) {
+      if ($key =~ /^ \Q$table\E \[(?<id>\d+)\] \. (?<field>.*) $/x) {
+        $hash{ $+{id} }{ $+{field} } = $value;
+      }
+    }
+
+    \%hash;
   }
 
   sub add_ui_error {
@@ -1171,7 +1193,14 @@ package Praati::Controller {
   sub panel_ratings_by_user_controller {
     my ($panel_id) = @_;
 
-    # ...
+    my %p = $Q->Vars;
+    my $errors = {};
+
+    if ($p{send_ratings}) {
+      my $ids_with_fields = parse_form_ids_for_table(songs => \%p);
+      # ...
+    }
+
     Praati::View::page_panel_ratings_by_user($panel_id);
   }
 
