@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.57 2014/03/23 19:53:08 je Exp $
+# $Id: praati,v 1.58 2014/03/23 19:59:39 je Exp $
 
 =pod
 
@@ -473,13 +473,15 @@ package Praati::Model {
       }
 
       if (not %$errors) {
-        query(q{
-          insert into users (user_email,
-                             user_encrypted_password,
-                             user_name,
-                             user_role)
-            values (?, ?, ?, ?);
-        }, $user_email, $user_encrypted_password, $user_name, $user_role);
+        query(q{ insert into users (user_email,
+                                    user_encrypted_password,
+                                    user_name,
+                                    user_role)
+                   values (?, ?, ?, ?); },
+              $user_email,
+              $user_encrypted_password,
+              $user_name,
+              $user_role);
       }
     });
   }
@@ -527,15 +529,16 @@ package Praati::Model {
 
     my $sql_hours = "+${Praati::Config::User_session_hours} hours";
 
-    query(q{
-      insert into user_sessions (user_session_expires_at,
-                                 user_session_key,
-                                 user_id)
-        select datetime('now', ?),
-               ?,
-               user_id
-          from users where user_email = ?;
-    }, $sql_hours, $user_session_key, $user_email);
+    query(q{ insert into user_sessions (user_session_expires_at,
+                                        user_session_key,
+                                        user_id)
+               select datetime('now', ?),
+                      ?,
+                      user_id
+                 from users where user_email = ?; },
+          $sql_hours,
+          $user_session_key,
+          $user_email);
   }
 
   sub expire_old_user_sessions {
@@ -585,19 +588,20 @@ package Praati::Model {
     my ($panel_id, $user_id, $song_ratings) = @_;
 
     transaction(sub {
+      my $sth = $DB->prepare(q{ insert or replace into song_ratings_with_values
+                                    (song_rating_comment,
+                                     song_rating_value_value,
+                                     panel_id,
+                                     song_id,
+                                     user_id)
+                                  values (?, ?, ?, ?, ?); });
+
       while (my ($song_id, $song_rating) = each(%$song_ratings)) {
-        query(q{ insert or replace into song_ratings_with_values
-                     (song_rating_comment,
-                      song_rating_value_value,
-                      panel_id,
-                      song_id,
-                      user_id)
-                   values (?, ?, ?, ?, ?); },
-              $song_rating->{rating_comment},
-              $song_rating->{rating_value},
-              $panel_id,
-              $song_id,
-              $user_id);
+        $sth->execute($song_rating->{rating_comment},
+                      $song_rating->{rating_value},
+                      $panel_id,
+                      $song_id,
+                      $user_id);
       }
     });
   }
@@ -628,9 +632,20 @@ package Praati::Model::Musicscan {
     my $panel_id = last_insert_id();
     my @mp3_filepaths = find_files(sub { /\.mp3$/ }, $panel_musicpath);
 
+    my $sth
+      = $Praati::Model::DB->prepare(q{
+          insert into songinfos (artist_name,
+                                 album_name,
+                                 album_year,
+                                 song_filepath,
+                                 song_name,
+                                 track_number,
+                                 panel_id)
+            values (?, ?, ?, ?, ?, ?, ?); });
+
     foreach my $mp3_filepath (@mp3_filepaths) {
       my $mp3tag = MP3::Tag->new($mp3_filepath);
-      add_song($panel_id, $mp3_filepath, $mp3tag);
+      add_song($sth, $panel_id, $mp3_filepath, $mp3tag);
     }
   }
 
@@ -644,7 +659,7 @@ package Praati::Model::Musicscan {
   }
 
   sub add_song {
-    my ($panel_id, $mp3_filepath, $mp3tag) = @_;
+    my ($sth, $panel_id, $mp3_filepath, $mp3tag) = @_;
 
     foreach my $field (qw(album artist title track1 year)) {
       unless ($mp3tag->$field) {
@@ -652,23 +667,13 @@ package Praati::Model::Musicscan {
       }
     }
 
-    query(q{
-            insert into songinfos (artist_name,
-                                   album_name,
-                                   album_year,
-                                   song_filepath,
-                                   song_name,
-                                   track_number,
-                                   panel_id)
-              values (?, ?, ?, ?, ?, ?, ?);
-          },
-          $mp3tag->artist,
-          $mp3tag->album,
-          $mp3tag->year,
-          $mp3_filepath,
-          $mp3tag->title,
-          $mp3tag->track1,
-          $panel_id);
+    $sth->execute($mp3tag->artist,
+                  $mp3tag->album,
+                  $mp3tag->year,
+                  $mp3_filepath,
+                  $mp3tag->title,
+                  $mp3tag->track1,
+                  $panel_id);
   }
 }
 
