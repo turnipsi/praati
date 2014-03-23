@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.56 2014/03/22 19:29:04 je Exp $
+# $Id: praati,v 1.57 2014/03/23 19:53:08 je Exp $
 
 =pod
 
@@ -33,6 +33,7 @@ A sample Apache configuration:
                List::MoreUtils         \
                MP3::Tag                \
                POSIX                   \
+               Statistics::Descriptive \
                Tie::Hash::NamedCapture
     PerlSendHeader On
     PerlSetVar PerlRunOnce On
@@ -69,6 +70,9 @@ package Praati::Config {
 #
 
 package Praati::Constants {
+  # XXX database checks could also use this
+  use constant MAX_SONG_RATING       => 10.0;
+
   use constant NO_SONG_RATING_MARKER => '-';
 }
 
@@ -283,7 +287,12 @@ package Praati::Model {
 
       create view if not exists song_ratings_with_values
         as select * from song_ratings
-          left outer join song_rating_values using (song_rating_id);
+             left outer join song_rating_values using (song_rating_id);
+
+      create view if not exists song_ratings_with_normalized_values
+        as select * from song_ratings_with_values
+             left outer join song_rating_normalized_values
+                               using (song_rating_value_id);
 
       -- create triggers
 
@@ -565,6 +574,13 @@ package Praati::Model {
   # user ratings handling
   #
 
+  sub normalized_rating {
+    my ($mean, $stdev, $rating_value) = @_;
+    my $cumulative_probability = cdf_normal($mean, $stdev, $rating_value);
+
+    Praati::Constants::MAX_SONG_RATING * $cumulative_probability;
+  }
+
   sub update_user_ratings {
     my ($panel_id, $user_id, $song_ratings) = @_;
 
@@ -584,6 +600,12 @@ package Praati::Model {
               $user_id);
       }
     });
+  }
+
+  sub update_user_normalized_ratings {
+    my ($panel_id, $user_id) = @_;
+    # XXX
+    warn "update_user_normalized_ratings panel_id=$panel_id user_id=$user_id";
   }
 }
 
@@ -651,16 +673,42 @@ package Praati::Model::Musicscan {
 }
 
 package Praati::Model::SQLite {
-  sub register { $Praati::Model::DB->sqlite_create_function(@_); }
-
   sub register_sqlite_functions {
-    register('check_user_email',
-             1,
-             \&Praati::Model::check_user_email);
+    my $db = $Praati::Model::DB;
 
-    register('check_user_session_key',
-             1,
-             \&Praati::Model::check_user_session_key);
+    $db->sqlite_create_function('check_user_email',
+                                1,
+                               \&Praati::Model::check_user_email);
+
+    $db->sqlite_create_function('check_user_session_key',
+                                1,
+                                \&Praati::Model::check_user_session_key);
+
+    $db->sqlite_create_function('normalized_rating',
+                                3,
+                                \&Praati::Model::normalized_rating);
+
+    $db->sqlite_create_aggregate('stdev',
+                                 1,
+                                 'Praati::Model::SQLite::StandardDeviation');
+  }
+}
+
+package Praati::Model::SQLite::StandardDeviation {
+  use Statistics::Descriptive;
+
+  sub new { bless [] => $_[0]; }
+
+  sub step {
+    my ($self, $value) = @_;
+    push @$self, $value;
+  }
+
+  sub finalize {
+    my ($self) = @_;
+    my $stat = Statistics::Descriptive->new();
+    $stat->add_data(@$self);
+    $stat->standard_deviation();
   }
 }
 
@@ -784,6 +832,8 @@ package Praati::View {
     my $albums = records(q{ select * from albums_in_panels where panel_id = ?
                               order by album_year; },
                          $panel_id);
+
+    Praati::Model::update_user_normalized_ratings($panel_id, $user_id);
 
     my @album_rating_tables
       = map { h1($_->{album_name})
@@ -936,7 +986,7 @@ package Praati::View {
     my ($album, $panel_id, $user_id) = @_;
 
     my $songs = records(q{ select * from songinfos
-                             left outer join song_ratings_with_values
+                             left outer join song_ratings_with_normalized_values
                                using (panel_id, song_id)
                            where album_id = ?
                              and panel_id = ?
@@ -969,6 +1019,7 @@ package Praati::View {
          $song_with_rating->{artist_name},
          $song_with_rating->{song_name},
          $rating_choice,
+         $song_with_rating->{song_rating_normalized_value_value} // '',
          $comment,
          submit(send_ratings => 'Send'),
        ]);
@@ -990,14 +1041,13 @@ package Praati::View {
   }
 
   sub song_rating_values {
-    my $max_song_rating = 10.0;
-    my $step_size       =  0.5;
+    my $step_size =  0.5;
 
     (
       Praati::Constants::NO_SONG_RATING_MARKER,
       reverse(
         map { sprintf('%.1f', $_ * $step_size) }
-          0 .. ($max_song_rating / $step_size))
+          0 .. (Praati::Constants::MAX_SONG_RATING / $step_size))
     );
   }
 }
@@ -1020,7 +1070,7 @@ package Praati::Controller {
 
   our ($Q, $Session_user);
 
-  our $Debugging = 1;
+  our $Debugging = 0;
 
   sub main {
     $Debugging
