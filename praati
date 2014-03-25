@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.58 2014/03/23 19:59:39 je Exp $
+# $Id: praati,v 1.59 2014/03/25 20:32:13 je Exp $
 
 =pod
 
@@ -21,7 +21,6 @@ A sample Apache configuration:
                CGI::Pretty             \
                Class::Struct           \
                Crypt::SaltedHash       \
-               Data::Dumper            \
                DBD::SQLite             \
                DBI                     \
                Digest::SHA             \
@@ -31,6 +30,7 @@ A sample Apache configuration:
                File::Find              \
                File::Glob              \
                List::MoreUtils         \
+               Math::Trig              \
                MP3::Tag                \
                POSIX                   \
                Statistics::Descriptive \
@@ -142,6 +142,7 @@ package Praati::Model {
   use Email::Valid;
   use Exporter qw(import);
   use File::Glob qw(bsd_glob);
+  use Math::Trig;
   use Scalar::Util qw(blessed);
 
   our @EXPORT = qw(last_insert_id
@@ -442,9 +443,7 @@ package Praati::Model {
   }
 
   sub debug_query {
-    # use Data::Dumper;
-    # warn Dumper(records('select * from song_ratings_with_values
-    #                        where song_rating_value_value is not null'));
+    # ...
   }
 
   # user handling
@@ -577,11 +576,28 @@ package Praati::Model {
   # user ratings handling
   #
 
+  sub cdf_normal {
+    my ($mean, $stdev, $rating_value) = @_;
+
+    $stdev = defined $stdev && $stdev > 0  ?  $stdev  :  0.00001;
+
+    my $sum = my $value = my $x = ($rating_value - $mean) / $stdev;
+
+    for (my $i = 0; $i < 100; $i++) {
+      $value = $value * $x * $x / (2 * $i + 1);
+      $sum += $value;
+    }
+
+    my $foo = 0.5 + ($sum / sqrt(2 * pi)) * exp(- ($x * $x) / 2);
+    warn "returning $foo";
+    $foo;
+  }
+
   sub normalized_rating {
     my ($mean, $stdev, $rating_value) = @_;
-    my $cumulative_probability = cdf_normal($mean, $stdev, $rating_value);
 
-    Praati::Constants::MAX_SONG_RATING * $cumulative_probability;
+    Praati::Constants::MAX_SONG_RATING
+      * cdf_normal($mean, $stdev, $rating_value);
   }
 
   sub update_user_ratings {
@@ -608,8 +624,25 @@ package Praati::Model {
 
   sub update_user_normalized_ratings {
     my ($panel_id, $user_id) = @_;
-    # XXX
-    warn "update_user_normalized_ratings panel_id=$panel_id user_id=$user_id";
+    query(q{
+            insert into song_rating_normalized_values
+                (song_rating_normalized_value_value,
+                 song_rating_value_id)
+              select normalized_rating(mean,
+                                       stdev,
+                                       srv.song_rating_value_value),
+                     srv.song_rating_value_id
+                from song_ratings_with_values as srv
+                  cross join (select avg(song_rating_value_value) as mean,
+                                     stdev(song_rating_value_value) as stdev
+                                from song_ratings_with_values
+                                  where song_rating_value_value is not null
+                                  group by panel_id, user_id)
+                where panel_id = ?
+                   and user_id = ?;
+                   and song_rating_value_value is not null; },
+          $panel_id,
+          $user_id);
   }
 }
 
