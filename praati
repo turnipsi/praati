@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
-# -*- mode: perl; coding: utf-8; -*'
-# $Id: praati,v 1.59 2014/03/25 20:32:13 je Exp $
+# -*- mode: perl; coding: utf-8; -*-
+# $Id: praati,v 1.60 2014/03/26 20:04:57 je Exp $
 
 =pod
 
@@ -295,6 +295,17 @@ package Praati::Model {
              left outer join song_rating_normalized_values
                                using (song_rating_value_id);
 
+      create view if not exists user_ratings_statistics
+        as select avg(song_rating_value_value)
+                    as user_ratings_statistics_mean,
+                  stdev(song_rating_value_value)
+                    as user_ratings_statistics_stdev,
+                  song_ratings_with_values.panel_id,
+                  song_ratings_with_values.user_id
+             from song_ratings_with_values
+               where song_rating_value_value is not null
+               group by panel_id, user_id;
+
       -- create triggers
 
       create trigger if not exists insert_songinfos
@@ -583,14 +594,12 @@ package Praati::Model {
 
     my $sum = my $value = my $x = ($rating_value - $mean) / $stdev;
 
-    for (my $i = 0; $i < 100; $i++) {
+    for (my $i = 1; $i <= 100; $i++) {
       $value = $value * $x * $x / (2 * $i + 1);
       $sum += $value;
     }
 
-    my $foo = 0.5 + ($sum / sqrt(2 * pi)) * exp(- ($x * $x) / 2);
-    warn "returning $foo";
-    $foo;
+    0.5 + ($sum / sqrt(2 * pi)) * exp(- ($x * $x) / 2);
   }
 
   sub normalized_rating {
@@ -624,23 +633,20 @@ package Praati::Model {
 
   sub update_user_normalized_ratings {
     my ($panel_id, $user_id) = @_;
+
     query(q{
             insert into song_rating_normalized_values
                 (song_rating_normalized_value_value,
                  song_rating_value_id)
-              select normalized_rating(mean,
-                                       stdev,
-                                       srv.song_rating_value_value),
-                     srv.song_rating_value_id
-                from song_ratings_with_values as srv
-                  cross join (select avg(song_rating_value_value) as mean,
-                                     stdev(song_rating_value_value) as stdev
-                                from song_ratings_with_values
-                                  where song_rating_value_value is not null
-                                  group by panel_id, user_id)
+              select normalized_rating(user_ratings_statistics_mean,
+                                       user_ratings_statistics_stdev,
+                                       song_rating_value_value),
+                     song_rating_value_id
+                from song_ratings_with_values
+                  join user_ratings_statistics using (panel_id, user_id)
                 where panel_id = ?
-                   and user_id = ?;
-                   and song_rating_value_value is not null; },
+                  and user_id  = ?
+                  and song_rating_value_value is not null; },
           $panel_id,
           $user_id);
   }
@@ -744,7 +750,7 @@ package Praati::Model::SQLite::StandardDeviation {
 
   sub finalize {
     my ($self) = @_;
-    my $stat = Statistics::Descriptive->new();
+    my $stat = Statistics::Descriptive::Sparse->new();
     $stat->add_data(@$self);
     $stat->standard_deviation();
   }
@@ -1053,11 +1059,17 @@ package Praati::View {
       = textfield($comment_form_id,
                   $song_with_rating->{song_rating_comment} // '');
 
+    my $normalized_value
+      = $song_with_rating->{song_rating_normalized_value_value}
+          ? sprintf('%.1f',
+                    $song_with_rating->{song_rating_normalized_value_value})
+          : '&ndash;';
+
     td([
          $song_with_rating->{artist_name},
          $song_with_rating->{song_name},
          $rating_choice,
-         $song_with_rating->{song_rating_normalized_value_value} // '',
+         $normalized_value,
          $comment,
          submit(send_ratings => 'Send'),
        ]);
