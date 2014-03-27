@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.60 2014/03/26 20:04:57 je Exp $
+# $Id: praati,v 1.61 2014/03/27 05:26:57 je Exp $
 
 =pod
 
@@ -642,11 +642,12 @@ package Praati::Model {
                                        user_ratings_statistics_stdev,
                                        song_rating_value_value),
                      song_rating_value_id
-                from song_ratings_with_values
+                from song_ratings_with_normalized_values
                   join user_ratings_statistics using (panel_id, user_id)
                 where panel_id = ?
                   and user_id  = ?
-                  and song_rating_value_value is not null; },
+                  and song_rating_value_value is not null
+                  and song_rating_normalized_value_value is null; },
           $panel_id,
           $user_id);
   }
