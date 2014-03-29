@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.62 2014/03/29 10:21:58 je Exp $
+# $Id: praati,v 1.63 2014/03/29 11:13:55 je Exp $
 
 =pod
 
@@ -270,6 +270,7 @@ package Praati::Model {
 
         song_rating_value_id integer unique not null
           references song_rating_values(song_rating_value_id)
+            on delete cascade
       );
 
       -- create views
@@ -362,15 +363,22 @@ package Praati::Model {
                     and song_ratings.panel_id = new.panel_id
                     and song_ratings.song_id  = new.song_id
                     and song_ratings.user_id  = new.user_id;
+          end;
 
+      create trigger if not exists delete_normalized_song_ratings
+        after insert on song_rating_values
+          begin
             delete from song_rating_normalized_values
               where song_rating_value_id in (
-                select song_rating_value_id
-                   from song_ratings_with_values
-                     where panel_id = new.panel_id
-                       and  user_id = new.user_id
+                select b.song_rating_value_id
+                  from song_ratings_with_values as a
+                    cross join song_ratings_with_values as b
+                  where a.song_rating_id = new.song_rating_id
+                    and a.panel_id       = b.panel_id
+                    and a.user_id        = b.user_id
               );
           end;
+
     });
   }
 
