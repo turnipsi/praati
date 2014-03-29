@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.61 2014/03/27 05:26:57 je Exp $
+# $Id: praati,v 1.62 2014/03/29 10:21:58 je Exp $
 
 =pod
 
@@ -1061,24 +1061,39 @@ package Praati::View {
                   $song_with_rating->{song_rating_comment} // '');
 
     my $normalized_value
-      = $song_with_rating->{song_rating_normalized_value_value}
-          ? sprintf('%.1f',
-                    $song_with_rating->{song_rating_normalized_value_value})
-          : '&ndash;';
+      = $song_with_rating->{song_rating_normalized_value_value};
 
-    td([
-         $song_with_rating->{artist_name},
-         $song_with_rating->{song_name},
-         $rating_choice,
-         $normalized_value,
-         $comment,
-         submit(send_ratings => 'Send'),
-       ]);
+    my $color_for_normalized_value = color_for_rating_value($normalized_value);
+    my $normalized_value_string
+      = $normalized_value
+          ? sprintf('%.1f', $normalized_value)
+          : '&mdash;';
+
+    td($song_with_rating->{artist_name})
+    . td($song_with_rating->{song_name})
+    . td($rating_choice)
+    . td({ -style => "background-color: $color_for_normalized_value;" },
+         $normalized_value_string)
+    . td($comment)
+    . td(submit(send_ratings => 'Send'));
   }
 
   #
   # other
   #
+
+  sub color_for_rating_value {
+    my ($rating_value) = @_;
+    return '#808080' unless defined $rating_value;
+
+    my $green
+      = int(255.0 * ($rating_value / Praati::Constants::MAX_SONG_RATING));
+
+    my $red  = int(255.0 - $green);
+    my $blue = 96;
+
+    sprintf('#%02x%02x%02x', $red, $green, $blue);
+  }
 
   sub song_rating_choice {
     my ($rating_form_id, $song_rating_value_value) = @_;
