@@ -1,0 +1,58 @@
+#!/usr/bin/perl
+# -*- mode: perl; coding: utf-8; -*-
+# $Id: test,v 1.1 2014/03/30 19:58:43 je Exp $
+
+use autodie;
+# use diagnostics;
+use strict;
+use utf8;
+use warnings FATAL => qw(all);
+
+use Test::More tests => 1;
+
+use Test::WWW::Mechanize;
+
+
+#
+# subroutines
+#
+
+sub make_user {
+  my ($page, $userdata) = @_;
+
+  my $user_name = $userdata->{user_name};
+
+  my $mech = Test::WWW::Mechanize->new(autolint => 1);
+
+  subtest(qq{Make a new user "$user_name"} => sub {
+    plan(tests => 5);
+
+    $mech->get_ok($page);
+    $mech->content_contains('The main page.');
+
+    $mech->follow_link_ok({ text => 'New user' });
+
+    $mech->submit_form_ok({
+                            button => 'submit_new_user',
+                            with_fields => $userdata
+                          },
+                          'Send new user form');
+
+    $mech->base_like(qr{login$});
+  });
+}
+
+
+#
+# main
+#
+
+my $page = 'http://localhost/~je/praati/praati';
+
+make_user($page,
+          {
+            user_email           => 'je@turnipsi.no-ip.org',
+            user_name            => 'Eki',
+            user_password        => 'fyuowvcbrhjksa',
+            user_password_again  => 'fyuowvcbrhjksa',
+          });

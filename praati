@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.63 2014/03/29 11:13:55 je Exp $
+# $Id: praati,v 1.64 2014/03/30 19:58:42 je Exp $
 
 =pod
 
@@ -21,6 +21,7 @@ A sample Apache configuration:
                CGI::Pretty             \
                Class::Struct           \
                Crypt::SaltedHash       \
+               Data::Dumper            \
                DBD::SQLite             \
                DBI                     \
                Digest::SHA             \
@@ -462,6 +463,8 @@ package Praati::Model {
   }
 
   sub debug_query {
+    use Data::Dumper;
+    warn Dumper(records(q{ select * from users; }));
     # ...
   }
 
