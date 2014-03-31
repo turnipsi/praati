@@ -1,6 +1,6 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.1 2014/03/30 19:58:43 je Exp $
+# $Id: test,v 1.2 2014/03/31 19:08:58 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -8,38 +8,61 @@ use strict;
 use utf8;
 use warnings FATAL => qw(all);
 
-use Test::More tests => 1;
+use Test::More tests => 3;
 
 use Test::WWW::Mechanize;
 
 
-#
-# subroutines
-#
+package Praati::User {
+  use Class::Struct __PACKAGE__, {
+    browser  => 'Test::WWW::Mechanize',
+    email    => '$',
+    name     => '$',
+    password => '$',
+  };
 
-sub make_user {
-  my ($page, $userdata) = @_;
+  use Test::More;
 
-  my $user_name = $userdata->{user_name};
+  sub new_user {
+    my ($class, $page, $email, $name, $password) = @_;
 
-  my $mech = Test::WWW::Mechanize->new(autolint => 1);
+    my $self = $class->new(browser  => Test::WWW::Mechanize->new(autolint => 1),
+                           email    => $email,
+                           name     => $name,
+                           password => $password);
 
-  subtest(qq{Make a new user "$user_name"} => sub {
-    plan(tests => 5);
+    $self->register($page);
+  }
 
-    $mech->get_ok($page);
-    $mech->content_contains('The main page.');
+  sub register {
+    my ($self, $page) = @_;
 
-    $mech->follow_link_ok({ text => 'New user' });
+    my $user_name = $self->name;
 
-    $mech->submit_form_ok({
-                            button => 'submit_new_user',
-                            with_fields => $userdata
-                          },
-                          'Send new user form');
+    subtest(qq{Make a new user "$user_name"} => sub {
+      plan(tests => 5);
 
-    $mech->base_like(qr{login$});
-  });
+      $self->browser->get_ok($page);
+      $self->browser->content_contains('The main page.');
+
+      $self->browser->follow_link_ok({ text => 'New user' });
+
+      my $formfields = {
+                         user_email          => $self->email,
+                         user_name           => $self->name,
+                         user_password       => $self->password,
+                         user_password_again => $self->password,
+                       };
+
+      $self->browser->submit_form_ok({
+                                       button      => 'submit_new_user',
+                                       with_fields => $formfields,
+                                     },
+                                     'Send new user form');
+
+      $self->browser->base_like(qr{login$});
+    });
+  }
 }
 
 
@@ -49,10 +72,17 @@ sub make_user {
 
 my $page = 'http://localhost/~je/praati/praati';
 
-make_user($page,
-          {
-            user_email           => 'je@turnipsi.no-ip.org',
-            user_name            => 'Eki',
-            user_password        => 'fyuowvcbrhjksa',
-            user_password_again  => 'fyuowvcbrhjksa',
-          });
+my $user1 = Praati::User->new_user($page,
+                                   'user1@example.org',
+                                   'User 1',
+                                   'pogjwviwjvalaoo');
+
+my $user2 = Praati::User->new_user($page,
+                                   'user2@example.org',
+                                   'User 2',
+                                   'jtreofnvwlcjiwe');
+
+my $user3 = Praati::User->new_user($page,
+                                   'user3@example.org',
+                                   'User 3',
+                                   'ofwqhowqjbnmqwo');
