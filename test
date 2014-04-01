@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.2 2014/03/31 19:08:58 je Exp $
+# $Id: test,v 1.3 2014/04/01 18:28:52 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -8,7 +8,7 @@ use strict;
 use utf8;
 use warnings FATAL => qw(all);
 
-use Test::More tests => 3;
+use Test::More tests => 5;
 
 use Test::WWW::Mechanize;
 
@@ -19,30 +19,80 @@ package Praati::User {
     email    => '$',
     name     => '$',
     password => '$',
+    site     => '$',
   };
 
   use Test::More;
 
   sub new_user {
-    my ($class, $page, $email, $name, $password) = @_;
+    my ($class, $site, $email, $name, $password) = @_;
 
     my $self = $class->new(browser  => Test::WWW::Mechanize->new(autolint => 1),
                            email    => $email,
                            name     => $name,
-                           password => $password);
+                           password => $password,
+                           site     => $site);
 
-    $self->register($page);
+    $self->register($self->site);
+
+    $self;
+  }
+
+  sub login {
+    my ($self) = @_;
+
+    my $user_name = $self->name;
+
+    subtest(qq{Login user "$user_name"} => sub {
+      plan(tests => 4);
+      $self->main_page_ok();
+      $self->browser->follow_link_ok({ text => 'Login' });
+
+      my $formfields = {
+                         user_email    => $self->email,
+                         user_password => $self->password,
+                       };
+
+      $self->browser->submit_form_ok({
+                                       button      => 'submit_login',
+                                       with_fields => $formfields,
+                                     },
+                                     'Send login form');
+
+      $self->browser->base_like(qr{main$});
+    });
+  }
+
+  sub main_page_ok {
+    my ($self) = @_;
+    $self->browser->get_ok($self->site);
+  }
+
+  sub rate_songs {
+    my ($self, $panel_name) = @_;
+
+    my $user_name = $self->name;
+
+    my $title = qq{"$user_name" rates songs in "$panel_name"};
+
+    subtest($title => sub {
+      plan(tests => 3);
+      $self->main_page_ok();
+      $self->browser->follow_link_ok({ text => 'Panels' })
+        or warn $self->browser->content();
+      $self->browser->follow_link_ok({ text => $panel_name });
+    });
   }
 
   sub register {
-    my ($self, $page) = @_;
+    my ($self) = @_;
 
     my $user_name = $self->name;
 
     subtest(qq{Make a new user "$user_name"} => sub {
       plan(tests => 5);
 
-      $self->browser->get_ok($page);
+      $self->main_page_ok();
       $self->browser->content_contains('The main page.');
 
       $self->browser->follow_link_ok({ text => 'New user' });
@@ -70,19 +120,22 @@ package Praati::User {
 # main
 #
 
-my $page = 'http://localhost/~je/praati/praati';
+my $site = 'http://localhost/~je/praati/praati';
 
-my $user1 = Praati::User->new_user($page,
+my $user1 = Praati::User->new_user($site,
                                    'user1@example.org',
                                    'User 1',
-                                   'pogjwviwjvalaoo');
+                                   'pogjwviwjvalaook');
 
-my $user2 = Praati::User->new_user($page,
+my $user2 = Praati::User->new_user($site,
                                    'user2@example.org',
                                    'User 2',
                                    'jtreofnvwlcjiwe');
 
-my $user3 = Praati::User->new_user($page,
+my $user3 = Praati::User->new_user($site,
                                    'user3@example.org',
                                    'User 3',
                                    'ofwqhowqjbnmqwo');
+
+$user1->login();
+$user1->rate_songs("Depeche Mode - Best of Greatest Hits");
