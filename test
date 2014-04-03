@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.8 2014/04/03 18:58:30 je Exp $
+# $Id: test,v 1.9 2014/04/03 19:05:10 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -34,7 +34,7 @@ package Praati::User {
                            password => $password,
                            site     => $site);
 
-    $self->register();
+    $self and $self->register();
 
     $self;
   }
@@ -46,8 +46,10 @@ package Praati::User {
 
     subtest(qq{Login user "$user_name"} => sub {
       plan(tests => 4);
-      $self->main_page_ok();
-      $self->browser->follow_link_ok({ text => 'Login' });
+
+      $self->main_page_ok()
+        and $self->browser->follow_link_ok({ text => 'Login' })
+        or return;
 
       my $formfields = {
                          user_email    => $self->email,
@@ -58,9 +60,8 @@ package Praati::User {
                                        button      => 'submit_login',
                                        with_fields => $formfields,
                                      },
-                                     'Send login form');
-
-      $self->browser->base_like(qr{main$});
+                                     'Send login form')
+        and $self->browser->base_like(qr{main$});
 
       # XXX should check user type here (that it matches $user_type)
     });
@@ -117,9 +118,10 @@ package Praati::User {
     subtest($title => sub {
       plan(tests => (4 + $song_ratings_count));
 
-      $self->main_page_ok();
-      $self->browser->follow_link_ok({ text => 'Panels' });
-      $self->browser->follow_link_ok({ text => $panel_name });
+      $self->main_page_ok()
+        and $self->browser->follow_link_ok({ text => 'Panels' })
+        and $self->browser->follow_link_ok({ text => $panel_name })
+        or return;
 
       $self->browser->form_number(1);
 
@@ -146,10 +148,10 @@ package Praati::User {
     subtest(qq{Make a new user "$user_name"} => sub {
       plan(tests => 5);
 
-      $self->main_page_ok();
-      $self->browser->content_contains('The main page.');
-
-      $self->browser->follow_link_ok({ text => 'New user' });
+      $self->main_page_ok()
+        and $self->browser->content_contains('The main page.')
+        and $self->browser->follow_link_ok({ text => 'New user' })
+        or return;
 
       my $formfields = {
                          user_email          => $self->email,
@@ -162,9 +164,8 @@ package Praati::User {
                                        button      => 'submit_new_user',
                                        with_fields => $formfields,
                                      },
-                                     'Send new user form');
-
-      $self->browser->base_like(qr{login$});
+                                     'Send new user form')
+        and $self->browser->base_like(qr{login$});
     });
   }
 }
@@ -191,30 +192,31 @@ my $critic2 = Praati::User->new_user($site,
                                     'Critic Two',
                                     'ofwqhowqjbnmqwo');
 
-$critic1->login('critic');
-$critic1->rate_songs('Depeche Mode - Best of Greatest Hits',
-                     {
-                       "Personal Jesus"                    => '8.0',
-                       "Just Can't Get Enough"             => '1.5',
-                       "Everything Counts"                 => '7.5',
-                       "Enjoy The Silence"                 => '5.5',
-                       "Shake The Disease"                 => '3.5',
-                       "See You"                           => '1.0',
-                       "It's No Good"                      => '5.0',
-                       "Strangelove"                       => '6.0',
-                       "Suffer Well"                       => '7.0',
-                       "Dream On"                          => '5.5',
-                       "People Are People"                 => '4.0',
-                       "Martyr"                            => '8.0',
-                       "Walking In My Shoes"               => '9.0',
-                       "I Feel You"                        => '9.0',
-                       "Precious"                          => '3.5',
-                       "Master And Servant"                => '2.5',
-                       "New Life"                          => '2.0',
-                       "Never Let Me Down Again"           => '7.5',
-                       "Wrong"                             => '6.0',
-                       "Peace"                             => '5.5',
-                       "Personal Jesus (The Stargate Mix)" => '3.5',
-                       "Heaven"                            => '3.5',
-                       "Soothe My Soul"                    => '4.0',
-                     });
+$critic1
+  and $critic1->login('critic')
+  and $critic1->rate_songs('Depeche Mode - Best of Greatest Hits',
+                           {
+                             "Personal Jesus"                    => '8.0',
+                             "Just Can't Get Enough"             => '1.5',
+                             "Everything Counts"                 => '7.5',
+                             "Enjoy The Silence"                 => '5.5',
+                             "Shake The Disease"                 => '3.5',
+                             "See You"                           => '1.0',
+                             "It's No Good"                      => '5.0',
+                             "Strangelove"                       => '6.0',
+                             "Suffer Well"                       => '7.0',
+                             "Dream On"                          => '5.5',
+                             "People Are People"                 => '4.0',
+                             "Martyr"                            => '8.0',
+                             "Walking In My Shoes"               => '9.0',
+                             "I Feel You"                        => '9.0',
+                             "Precious"                          => '3.5',
+                             "Master And Servant"                => '2.5',
+                             "New Life"                          => '2.0',
+                             "Never Let Me Down Again"           => '7.5',
+                             "Wrong"                             => '6.0',
+                             "Peace"                             => '5.5',
+                             "Personal Jesus (The Stargate Mix)" => '3.5',
+                             "Heaven"                            => '3.5',
+                             "Soothe My Soul"                    => '4.0',
+                           });
