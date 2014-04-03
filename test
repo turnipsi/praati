@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.4 2014/04/01 19:05:46 je Exp $
+# $Id: test,v 1.5 2014/04/03 18:02:30 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -22,11 +22,10 @@ package Praati::User {
     site     => '$',
   };
 
-  use Data::Dumper;
   use Test::More;
 
   sub new_user {
-    my ($class, $site, $email, $name, $password) = @_;
+    my ($class, $site, $user_type, $email, $name, $password) = @_;
 
     my $self = $class->new(browser  => Test::WWW::Mechanize->new(autolint => 1),
                            email    => $email,
@@ -34,7 +33,7 @@ package Praati::User {
                            password => $password,
                            site     => $site);
 
-    $self->register($self->site);
+    $self->register($user_type);
 
     $self;
   }
@@ -72,15 +71,18 @@ package Praati::User {
   sub lookup_rating_id_number_for_song {
     my ($self, $songname) = @_;
 
-    my $tcp = HTML::TableContentParser->new();
-
+    my $tcp   = HTML::TableContentParser->new();
     my $table = $tcp->parse( $self->browser->content() );
 
     foreach my $row (@{ $table->[1]{rows} }) {
       my $cells = $row->{cells};
-      if ($cells->[1]{data} eq $songname) {
-        # XXX regexp, blah!
-        if ($cells->[2]{data} =~ /songs\[(\d+)\].rating_value/) {
+      if ($cells
+            && $cells->[1]
+            && $cells->[1]{data}
+            && $cells->[1]{data} eq $songname
+            && $cells->[2]
+            && $cells->[2]{data}) {
+        if ($cells->[2]{data} =~ /^<select name="songs\[(\d+)\].rating_value"/) {
           return $1;
         }
       }
@@ -90,30 +92,39 @@ package Praati::User {
   }
 
   sub rate_songs {
-    my ($self, $panel_name) = @_;
+    my ($self, $panel_name, $song_ratings) = @_;
 
     my $user_name = $self->name;
 
     my $title = qq{"$user_name" rates songs in "$panel_name"};
 
+    my $song_ratings_count = scalar(keys %$song_ratings);
+
     subtest($title => sub {
-      plan(tests => 4);
+      plan(tests => (4 + $song_ratings_count));
+
       $self->main_page_ok();
       $self->browser->follow_link_ok({ text => 'Panels' });
       $self->browser->follow_link_ok({ text => $panel_name });
 
-      my $rating_id
-        = $self->lookup_rating_id_number_for_song('Everything Counts');
-
       $self->browser->form_number(1);
-      $self->browser->select("songs[$rating_id].rating_value", "7.5");
+
+      while (my ($song_name, $rating_value) = each %$song_ratings) {
+        my $rating_id = $self->lookup_rating_id_number_for_song($song_name);
+
+        ok(defined($rating_id), "Found rating id for song '$song_name'");
+
+        $self->browser->select("songs[$rating_id].rating_value",
+                               $rating_value);
+      }
+
       $self->browser->submit_form_ok({ button => 'send_ratings', },
                                      'Send ratings');
     });
   }
 
   sub register {
-    my ($self) = @_;
+    my ($self, $user_type) = @_;
 
     my $user_name = $self->name;
 
@@ -139,6 +150,8 @@ package Praati::User {
                                      'Send new user form');
 
       $self->browser->base_like(qr{login$});
+
+      # XXX should also check user type (somehow, matching $user_type)
     });
   }
 }
@@ -150,20 +163,28 @@ package Praati::User {
 
 my $site = 'http://localhost/~je/praati/praati';
 
-my $user1 = Praati::User->new_user($site,
-                                   'user1@example.org',
-                                   'User 1',
-                                   'pogjwviwjvalaook');
+my $admin1 = Praati::User->new_user($site,
+                                    'admin',
+                                    'admin1@example.org',
+                                    'Admin One',
+                                    'pogjwviwjvalaook');
 
-my $user2 = Praati::User->new_user($site,
-                                   'user2@example.org',
-                                   'User 2',
-                                   'jtreofnvwlcjiwe');
+my $critic1 = Praati::User->new_user($site,
+                                    'critic',
+                                    'critic1@example.org',
+                                    'Critic One',
+                                    'jtreofnvwlcjiwe');
 
-my $user3 = Praati::User->new_user($site,
-                                   'user3@example.org',
-                                   'User 3',
-                                   'ofwqhowqjbnmqwo');
+my $critic2 = Praati::User->new_user($site,
+                                    'critic',
+                                    'critic2@example.org',
+                                    'Critic Two',
+                                    'ofwqhowqjbnmqwo');
 
-$user1->login();
-$user1->rate_songs("Depeche Mode - Best of Greatest Hits");
+$critic1->login();
+$critic1->rate_songs('Depeche Mode - Best of Greatest Hits',
+                     {
+                       'Everything Counts' => '7.5',
+                       'Personal Jesus'    => '8.0',
+                       'Shake The Disease' => '3.5',
+                     });
