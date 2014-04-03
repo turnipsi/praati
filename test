@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.7 2014/04/03 18:30:51 je Exp $
+# $Id: test,v 1.8 2014/04/03 18:58:30 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -8,6 +8,7 @@ use strict;
 use utf8;
 use warnings FATAL => qw(all);
 
+use HTML::SimpleParse;
 use HTML::TableContentParser;
 use Test::More tests => 5;
 use Test::WWW::Mechanize;
@@ -82,8 +83,16 @@ package Praati::User {
 
         next unless $cells->[2] && $cells->[2]{data};
 
-        if ($cells->[2]{data} =~ /^<select name="songs\[(\d+)\].rating_value"/) {
-          $rating_ids{ $songname } = $1;
+        # XXX put html parsing into some subroutine?
+        my $p = HTML::SimpleParse->new($cells->[2]{data}, fix_case => 0);
+        foreach ($p->tree) {
+          if ($_->{type} eq 'starttag') {
+            my %args = $p->parse_args($_->{content});
+            if ($args{name} && $args{name} =~ /^songs\[(\d+)\].rating_value$/) {
+              $rating_ids{ $songname } = $1;
+              last;
+            }
+          }
         }
       }
     }
