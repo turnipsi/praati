@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.6 2014/04/03 18:05:49 je Exp $
+# $Id: test,v 1.7 2014/04/03 18:30:51 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -65,27 +65,30 @@ package Praati::User {
     });
   }
 
-  sub lookup_rating_id_number_for_song {
-    my ($self, $songname) = @_;
+  sub lookup_rating_ids {
+    my ($self) = @_;
+
+    my %rating_ids;
 
     my $tcp   = HTML::TableContentParser->new();
     my $table = $tcp->parse( $self->browser->content() );
 
-    foreach my $row (@{ $table->[1]{rows} }) {
-      my $cells = $row->{cells};
-      if ($cells
-            && $cells->[1]
-            && $cells->[1]{data}
-            && $cells->[1]{data} eq $songname
-            && $cells->[2]
-            && $cells->[2]{data}) {
+    if ($table && $table->[1] && $table->[1]{rows}) {
+      foreach my $row (@{ $table->[1]{rows} }) {
+        my $cells = $row->{cells};
+
+        next unless $cells && $cells->[1] && $cells->[1]{data};
+        my $songname = $cells->[1]{data};
+
+        next unless $cells->[2] && $cells->[2]{data};
+
         if ($cells->[2]{data} =~ /^<select name="songs\[(\d+)\].rating_value"/) {
-          return $1;
+          $rating_ids{ $songname } = $1;
         }
       }
     }
 
-    return;
+    \%rating_ids;
   }
 
   sub main_page_ok {
@@ -111,9 +114,10 @@ package Praati::User {
 
       $self->browser->form_number(1);
 
-      while (my ($song_name, $rating_value) = each %$song_ratings) {
-        my $rating_id = $self->lookup_rating_id_number_for_song($song_name);
+      my $rating_ids = $self->lookup_rating_ids();
 
+      while (my ($song_name, $rating_value) = each %$song_ratings) {
+        my $rating_id = $rating_ids->{ $song_name };
         ok(defined($rating_id), "Found rating id for song '$song_name'");
 
         $self->browser->select("songs[$rating_id].rating_value",
@@ -181,7 +185,27 @@ my $critic2 = Praati::User->new_user($site,
 $critic1->login('critic');
 $critic1->rate_songs('Depeche Mode - Best of Greatest Hits',
                      {
-                       'Everything Counts' => '7.5',
-                       'Personal Jesus'    => '8.0',
-                       'Shake The Disease' => '3.5',
+                       "Personal Jesus"                    => '8.0',
+                       "Just Can't Get Enough"             => '1.5',
+                       "Everything Counts"                 => '7.5',
+                       "Enjoy The Silence"                 => '5.5',
+                       "Shake The Disease"                 => '3.5',
+                       "See You"                           => '1.0',
+                       "It's No Good"                      => '5.0',
+                       "Strangelove"                       => '6.0',
+                       "Suffer Well"                       => '7.0',
+                       "Dream On"                          => '5.5',
+                       "People Are People"                 => '4.0',
+                       "Martyr"                            => '8.0',
+                       "Walking In My Shoes"               => '9.0',
+                       "I Feel You"                        => '9.0',
+                       "Precious"                          => '3.5',
+                       "Master And Servant"                => '2.5',
+                       "New Life"                          => '2.0',
+                       "Never Let Me Down Again"           => '7.5',
+                       "Wrong"                             => '6.0',
+                       "Peace"                             => '5.5',
+                       "Personal Jesus (The Stargate Mix)" => '3.5',
+                       "Heaven"                            => '3.5',
+                       "Soothe My Soul"                    => '4.0',
                      });
