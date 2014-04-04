@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.64 2014/03/30 19:58:42 je Exp $
+# $Id: praati,v 1.65 2014/04/04 19:27:40 je Exp $
 
 =pod
 
@@ -861,9 +861,16 @@ package Praati::View {
   sub page { response(page => standard_page(@_)); }
 
   sub standard_page {
-    my ($content, %opts) = @_;
+    my ($title, $content, %opts) = @_;
 
-    start_html($opts{-start_html} ? @{ $opts{-start_html} } : ())
+    confess('No title set for page') unless $title;
+
+    my @start_html_opts = (
+                            $opts{-start_html} ? @{ $opts{-start_html} } : (),
+                            -title => "Praati - $title",
+                          );
+
+    start_html(@start_html_opts)
     . menu()
     . $content
     . end_html()
@@ -929,6 +936,7 @@ package Praati::View {
     my $start_html_options = [
       -head => meta({ -http_equiv => 'refresh',
                       -content    => $login_refresh_seconds }),
+      -title => 'Praati - The login page',
     ];
 
     my $page
@@ -937,12 +945,14 @@ package Praati::View {
             Tr $tablerows));
 
     response(cookie => $cookie,
-             page   => standard_page($page,
+             page   => standard_page('Login',
+                                     $page,
                                      -start_html => $start_html_options));
   }
 
   sub page_main {
-    page( p('The main page.') );
+    page('Main',
+         p('The main page.') );
   }
 
   sub page_new_user {
@@ -970,29 +980,35 @@ package Praati::View {
     ];
 
     # XXX repetition
-    page(
-      form({ -method => 'post' },
-        table(
-          Tr $tablerows)));
+    my $form
+      = form({ -method => 'post' },
+             table(
+               Tr $tablerows));
+
+    page('Create new user', $form);
   }
 
   sub page_logged_out {
     my ($cookie) = @_;
     response(cookie => $cookie,
-             page   => standard_page( p('You are now logged out.') ));
+             page   => standard_page('Logged out',
+                                     p('You are now logged out.')));
   }
 
   sub page_logout_error {
     my ($errors) = @_;
-    page( p('Could not log out: ' . $errors->{'*'}) );
+    page('Logout error',
+         p('Could not log out: ' . $errors->{'*'}) );
   }
 
   sub page_no_such_page {
-    standard_page( p('No such page.') );
+    standard_page('No such page',
+                  p('No such page.') );
   }
 
   sub page_not_logged_in {
-    page( p('You are not logged in.') );
+    page('Not logged in',
+         p('You are not logged in.') );
   }
 
   sub page_panel_ratings_by_user {
@@ -1011,10 +1027,14 @@ package Praati::View {
     my $panel_ratings_form = form_panel_ratings_by_user($panel_id,
                                                         session_user());
 
-    page(
-      p(sprintf('This panel is "%s".', $panel->{panel_name}))
-      . (maybe_error('*', $errors, sub { p(join('' => @_)); }) // '')
-      . $panel_ratings_form);
+    # XXX should do html escaping
+    my $content
+      = p(sprintf('This panel is "%s".', $panel->{panel_name})
+          . (maybe_error('*', $errors, sub { p(join('' => @_)); }) // '')
+          . $panel_ratings_form);
+
+    page(qq{Rate songs for "$panel->{panel_name}"},
+         $content);
   }
 
   sub page_panels {
@@ -1025,13 +1045,13 @@ package Praati::View {
                   a({ -href => $link }, $_->{panel_name});
                 } @$panels;
 
-    page(
-      p('Available panels are:')
-      . ul( li(\@items) ));
+    page('Available panels',
+         p('Available panels are:') . ul( li(\@items) ));
   }
 
   sub page_unauthorized_access {
-    standard_page( p('Access unauthorized.') );
+    standard_page('Unauthorized access',
+                  p('Access unauthorized.') );
   }
 
   #
