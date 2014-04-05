@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.10 2014/04/05 19:47:57 je Exp $
+# $Id: test,v 1.11 2014/04/05 19:54:55 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -11,7 +11,7 @@ use warnings FATAL => qw(all);
 use CGI;
 use HTML::SimpleParse;
 use HTML::TableContentParser;
-use Test::More tests => 5;
+use Test::More tests => 6;
 use Test::WWW::Mechanize;
 
 
@@ -192,6 +192,11 @@ my $critic2 = Praati::User->new_user($site,
                                     'critic2@example.org',
                                     'Critic Two',
                                     'ofwqhowqjbnmqwo');
+
+my $critic3 = Praati::User->new_user($site,
+                                    'critic3@example.org',
+                                    'Critic Three',
+                                    'aorlnwwjpwiaqnl');
 
 $critic1
   and $critic1->login('critic')
