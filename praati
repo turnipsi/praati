@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.65 2014/04/04 19:27:40 je Exp $
+# $Id: praati,v 1.66 2014/04/05 11:32:26 je Exp $
 
 =pod
 
@@ -463,8 +463,8 @@ package Praati::Model {
   }
 
   sub debug_query {
-    use Data::Dumper;
-    warn Dumper(records(q{ select * from users; }));
+    # use Data::Dumper;
+    # warn Dumper(records(q{ select * from users; }));
     # ...
   }
 
@@ -871,6 +871,7 @@ package Praati::View {
                           );
 
     start_html(@start_html_opts)
+    . logged_as()
     . menu()
     . $content
     . end_html()
@@ -1124,6 +1125,21 @@ package Praati::View {
     my $blue = 96;
 
     sprintf('#%02x%02x%02x', $red, $green, $blue);
+  }
+
+  sub logged_as {
+    my $user_id = session_user();
+
+    return '' unless $user_id;
+
+    my $user = one_record(q{ select * from users where user_id = ?; },
+                          $user_id);
+    # XXX html escaping!
+    $user
+      ? sprintf(qq{Logged in as "%s" (%s)},
+                $user->{user_name},
+                $user->{user_role})
+      : '';
   }
 
   sub song_rating_choice {
