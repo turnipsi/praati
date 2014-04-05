@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.68 2014/04/05 11:44:31 je Exp $
+# $Id: praati,v 1.69 2014/04/05 19:47:57 je Exp $
 
 =pod
 
@@ -523,7 +523,10 @@ package Praati::Model {
   }
 
   sub new_user_role {
-    'admin'; # XXX qw(admin critic) are possible choices...
+    # the first user created will be admin, the rest of them are merely critics
+    query(q{ select count(*) from users; }) == 0
+      ? 'admin'
+      : 'critic';
   }
 
   sub verify_user_password {

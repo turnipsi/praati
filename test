@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.9 2014/04/03 19:05:10 je Exp $
+# $Id: test,v 1.10 2014/04/05 19:47:57 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -8,6 +8,7 @@ use strict;
 use utf8;
 use warnings FATAL => qw(all);
 
+use CGI;
 use HTML::SimpleParse;
 use HTML::TableContentParser;
 use Test::More tests => 5;
@@ -45,7 +46,7 @@ package Praati::User {
     my $user_name = $self->name;
 
     subtest(qq{Login user "$user_name"} => sub {
-      plan(tests => 4);
+      plan(tests => 5);
 
       $self->main_page_ok()
         and $self->browser->follow_link_ok({ text => 'Login' })
@@ -61,9 +62,9 @@ package Praati::User {
                                        with_fields => $formfields,
                                      },
                                      'Send login form')
-        and $self->browser->base_like(qr{main$});
-
-      # XXX should check user type here (that it matches $user_type)
+        and $self->browser->base_like(qr{main$})
+        and $self->browser->text_contains(
+              qq{Logged in as "$user_name" ($user_type)});
     });
   }
 
@@ -128,7 +129,7 @@ package Praati::User {
       my $rating_ids = $self->lookup_rating_ids();
 
       while (my ($song_name, $rating_value) = each %$song_ratings) {
-        my $rating_id = $rating_ids->{ $song_name };
+        my $rating_id = $rating_ids->{ CGI::escapeHTML($song_name) };
         ok(defined($rating_id), "Found rating id for song '$song_name'");
 
         $self->browser->select("songs[$rating_id].rating_value",
