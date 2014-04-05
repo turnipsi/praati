@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.67 2014/04/05 11:36:52 je Exp $
+# $Id: praati,v 1.68 2014/04/05 11:44:31 je Exp $
 
 =pod
 
@@ -417,7 +417,7 @@ package Praati::Model {
     $values->[0];
   }
 
-  sub one_record { one_exactly( records(@_)    ); }
+  sub one_record { one_exactly( records(@_) ); }
   sub one_value  { one_exactly( columns(@_) ); }
 
   sub query {
@@ -903,7 +903,7 @@ package Praati::View {
     Praati::Model::update_user_normalized_ratings($panel_id, $user_id);
 
     my @album_rating_tables
-      = map { h1($_->{album_name})
+      = map { h1(e($_->{album_name}))
               . table_album_ratings_by_user($_, $panel_id, $user_id) }
           @$albums;
 
@@ -940,7 +940,6 @@ package Praati::View {
     my $start_html_options = [
       -head => meta({ -http_equiv => 'refresh',
                       -content    => $login_refresh_seconds }),
-      -title => 'Praati - The login page',
     ];
 
     my $page
@@ -1001,6 +1000,7 @@ package Praati::View {
 
   sub page_logout_error {
     my ($errors) = @_;
+    # XXX error output to page?
     page('Logout error',
          p('Could not log out: ' . $errors->{'*'}) );
   }
@@ -1044,8 +1044,9 @@ package Praati::View {
     my $panels = records(q{ select * from panels order by panel_name; });
 
     my @items = map {
+                  # XXX url escaping here?
                   my $link = link_to('panel/' . $_->{panel_id});
-                  a({ -href => $link }, $_->{panel_name});
+                  a({ -href => $link }, e($_->{panel_name}));
                 } @$panels;
 
     page('Available panels',
@@ -1103,8 +1104,8 @@ package Praati::View {
           ? sprintf('%.1f', $normalized_value)
           : '&mdash;';
 
-    td($song_with_rating->{artist_name})
-    . td($song_with_rating->{song_name})
+    td(e($song_with_rating->{artist_name}))
+    . td(e($song_with_rating->{song_name}))
     . td($rating_choice)
     . td({ -style => "background-color: $color_for_normalized_value;" },
          $normalized_value_string)
