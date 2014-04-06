@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.70 2014/04/05 19:54:55 je Exp $
+# $Id: praati,v 1.71 2014/04/06 10:40:01 je Exp $
 
 =pod
 
@@ -35,7 +35,8 @@ A sample Apache configuration:
                MP3::Tag                \
                POSIX                   \
                Statistics::Descriptive \
-               Tie::Hash::NamedCapture
+               Tie::Hash::NamedCapture \
+               URI::Escape
     PerlSendHeader On
     PerlSetVar PerlRunOnce On
     SetHandler perl-script
@@ -272,6 +273,12 @@ package Praati::Model {
         song_rating_value_id integer unique not null
           references song_rating_values(song_rating_value_id)
             on delete cascade
+      );
+
+      create table if not exists listening_sessions (
+        listening_session_id   integer      primary key not null,
+        listening_session_name varchar(256) unique not null,
+        panel_id               integer      not null references panels(panel_id)
       );
 
       -- create views
@@ -524,7 +531,7 @@ package Praati::Model {
 
   sub new_user_role {
     # the first user created will be admin, the rest of them are merely critics
-    query(q{ select count(*) from users; }) == 0
+    one_value(q{ select count(user_id) from users; }) == 0
       ? 'admin'
       : 'critic';
   }
@@ -781,6 +788,7 @@ package Praati::View {
   Praati::Model->import;
 
   use CGI::Carp;
+  use URI::Escape;
   use Scalar::Util qw(blessed);
 
   BEGIN {
@@ -1019,19 +1027,9 @@ package Praati::View {
   }
 
   sub page_panel_ratings_by_user {
-    my ($errors, $panel_id) = @_;
+    my ($errors, $panel) = @_;
 
-    my $panel = eval {
-                  one_record(q{ select * from panels where panel_id = ?; },
-                             $panel_id);
-                };
-    my $err = $@;
-    if ($err) {
-      Praati::Error::no_such_page() if blessed($err) && $err->type eq 'not one';
-      confess($err);
-    }
-
-    my $panel_ratings_form = form_panel_ratings_by_user($panel_id,
+    my $panel_ratings_form = form_panel_ratings_by_user($panel->{panel_id},
                                                         session_user());
 
     my $content
@@ -1043,17 +1041,41 @@ package Praati::View {
          $content);
   }
 
+  sub panel_action_list_item {
+    my ($panel) = @_;
+    my $user_role = get_session_user_role();
+
+    my $panel_id = uri_escape($_->{panel_id});
+
+    my $rate_panel_uri = link_to(sprintf('panel/rate?panel_id=%d', $panel_id));
+
+    $user_role eq 'admin'
+      ? do {
+          my $listening_session_uri
+            = link_to(sprintf('/listening_session/new?panel_id=%d', $panel_id));
+          my $all_results_uri
+            = link_to(sprintf('/panel/results?panel_id=%d', $panel_id));
+          sprintf('%s [%s][%s][%s]',
+                  e($panel->{panel_name}),
+                  a({ -href => $rate_panel_uri }, 'rate'),
+                  a({ -href => $listening_session_uri },
+                    'create a new listening session'),
+                  a({ -href => $all_results_uri },
+                    'all results'));
+        }
+      :
+    $user_role eq 'critic'
+      ? a({ -href => $rate_panel_uri }, e($panel->{panel_name}))
+      :
+    confess('Asking panel_action_list_item() for an unsupported role');
+  }
+
   sub page_panels {
     my $panels = records(q{ select * from panels order by panel_name; });
 
-    my @items = map {
-                  # XXX url escaping here?
-                  my $link = link_to('panel/' . $_->{panel_id});
-                  a({ -href => $link }, e($_->{panel_name}));
-                } @$panels;
-
+    my @panel_action_items = map { panel_action_list_item($_) } @$panels;
     page('Available panels',
-         p('Available panels are:') . ul( li(\@items) ));
+         p('Available panels are:') . ul( li(\@panel_action_items) ));
   }
 
   sub page_unauthorized_access {
@@ -1261,10 +1283,10 @@ package Praati::Controller {
                          panels_controller();
                        } :
 
-      m|^/panel/(?<panel_id>\d+)$|
+      m|^/panel/rate$|
         ? do {
             restrict_to_roles( qw(admin critic) );
-            panel_ratings_by_user_controller($+{panel_id});
+            panel_ratings_by_user_controller();
           }
         :
 
@@ -1306,6 +1328,7 @@ package Praati::Controller {
 
   # we do not want to show unknown error messages to users,
   # but we should log those.
+
   sub add_unknown_ui_error {
     my ($errors, $field, $message) = @_;
     warn "Unknown error: $message";
@@ -1442,7 +1465,15 @@ package Praati::Controller {
   }
 
   sub panel_ratings_by_user_controller {
-    my ($panel_id) = @_;
+    my $panel = eval {
+                  one_record(q{ select * from panels where panel_id = ?; },
+                             $Q->url_param('panel_id'));
+                };
+    my $err = $@;
+    if ($err) {
+      Praati::Error::no_such_page() if blessed($err) && $err->type eq 'not one';
+      confess($err);
+    }
 
     my %p = $Q->Vars;
     my $errors = {};
@@ -1457,7 +1488,7 @@ package Praati::Controller {
       }
 
       eval {
-        Praati::Model::update_user_ratings($panel_id,
+        Praati::Model::update_user_ratings($panel->{panel_id},
                                            session_user(),
                                            $song_ratings);
       };
@@ -1466,7 +1497,7 @@ package Praati::Controller {
       }
     }
 
-    Praati::View::page_panel_ratings_by_user($errors, $panel_id);
+    Praati::View::page_panel_ratings_by_user($errors, $panel);
   }
 
   sub panels_controller {
