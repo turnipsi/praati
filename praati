@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.71 2014/04/06 10:40:01 je Exp $
+# $Id: praati,v 1.72 2014/04/06 19:21:52 je Exp $
 
 =pod
 
@@ -805,6 +805,7 @@ package Praati::View {
                            path_info
                            password_field
                            popup_menu
+                           radio_group
                            start_html
                            submit
                            table
@@ -903,6 +904,37 @@ package Praati::View {
   #
   # forms
   #
+
+  sub form_new_listening_session {
+    my $default_session_name = localtime();;
+
+    my %types = (
+      asc      => 'Play songs from worst to best',
+      desc_asc => 'Play to the worst, then to the best from position:',
+    );
+
+    # XXX the use of radio_group here is a bit strange... perhaps use input()
+    # XXX directly?
+    my $type_choice
+      = table(
+          Tr([
+               td(radio_group(listening_session_type => [ qw(asc) ],
+                              'asc', '', \%types)),
+               td(radio_group(listening_session_type => [ qw(desc_asc) ],
+                              '', '', \%types)
+                  . textfield('song_position'))]));
+
+    form({ -method => 'post' },
+         table(
+           Tr([
+                td([ 'Listening session name:',
+                     textfield('listening_session_name',
+                               $default_session_name) ]),
+
+                td([ 'Select session type:', $type_choice ]),
+                td({ -colspan => 2 },
+                   [ submit('new_listening_session', 'Create') ])])));
+  }
 
   sub form_panel_ratings_by_user {
     my ($panel_id, $user_id) = @_;
@@ -1013,17 +1045,28 @@ package Praati::View {
     my ($errors) = @_;
     # XXX error output to page?
     page('Logout error',
-         p('Could not log out: ' . $errors->{'*'}) );
+         p('Could not log out: ' . $errors->{'*'}));
+  }
+
+  sub page_new_listening_session {
+    my ($panel) = @_;
+
+    my $content
+      = p(qq{Create a new listening session for panel "$panel->{panel_name}":})
+        . form_new_listening_session();
+
+    page('New listening session',
+         $content);
   }
 
   sub page_no_such_page {
     standard_page('No such page',
-                  p('No such page.') );
+                  p('No such page.'));
   }
 
   sub page_not_logged_in {
     page('Not logged in',
-         p('You are not logged in.') );
+         p('You are not logged in.'));
   }
 
   sub page_panel_ratings_by_user {
@@ -1047,14 +1090,14 @@ package Praati::View {
 
     my $panel_id = uri_escape($_->{panel_id});
 
-    my $rate_panel_uri = link_to(sprintf('panel/rate?panel_id=%d', $panel_id));
+    my $rate_panel_uri = link_to(sprintf('panels/rate?panel_id=%d', $panel_id));
 
     $user_role eq 'admin'
       ? do {
           my $listening_session_uri
-            = link_to(sprintf('/listening_session/new?panel_id=%d', $panel_id));
+            = link_to(sprintf('listening_sessions/new?panel_id=%d', $panel_id));
           my $all_results_uri
-            = link_to(sprintf('/panel/results?panel_id=%d', $panel_id));
+            = link_to(sprintf('panels/results?panel_id=%d', $panel_id));
           sprintf('%s [%s][%s][%s]',
                   e($panel->{panel_name}),
                   a({ -href => $rate_panel_uri }, 'rate'),
@@ -1125,8 +1168,7 @@ package Praati::View {
 
     my $color_for_normalized_value = color_for_rating_value($normalized_value);
     my $normalized_value_string
-      = $normalized_value
-          ? sprintf('%.1f', $normalized_value)
+      = $normalized_value ? sprintf('%.1f', $normalized_value)
           : '&mdash;';
 
     td(e($song_with_rating->{artist_name}))
@@ -1210,7 +1252,7 @@ package Praati::Controller {
 
   our ($Q, $Session_user);
 
-  our $Debugging = 0;
+  our $Debugging = 1;
 
   sub main {
     $Debugging
@@ -1272,25 +1314,43 @@ package Praati::Controller {
     local $_ = $path_info;
 
     my $page = eval {
-      m|^$|          ? redirect('/main')     :
-      m|^/$|         ? redirect('/main')     :
-      m|^/login$|    ? login_controller()    :
-      m|^/logout$|   ? logout_controller()   :
-      m|^/main$|     ? main_controller()     : # XXX do we need this at all?
-      m|^/new_user$| ? new_user_controller() :
-      m|^/panels$|   ? do {
-                         restrict_to_roles( qw(admin critic) );
-                         panels_controller();
-                       } :
-
-      m|^/panel/rate$|
+      m|^$|
+        ? redirect('/main')
+        :
+      m|^/$|
+        ? redirect('/main')
+        :
+      m|^/listening_sessions/new$|
+        ? do {
+            restrict_to_roles( qw(admin) );
+            new_listening_session_controller();
+          }
+        :
+      m|^/login$|
+        ? login_controller()
+        :
+      m|^/logout$|
+        ? logout_controller()
+        :
+      m|^/main$|
+        ? main_controller() # XXX do we need this at all?
+        :
+      m|^/new_user$|
+        ? new_user_controller()
+        :
+      m|^/panels$|
+        ? do {
+            restrict_to_roles( qw(admin critic) );
+            panels_controller();
+          }
+        :
+      m|^/panels/rate$|
         ? do {
             restrict_to_roles( qw(admin critic) );
             panel_ratings_by_user_controller();
           }
         :
-
-        Praati::Error::no_such_page()
+      Praati::Error::no_such_page()
     };
     my $err = $@;
 
@@ -1339,6 +1399,19 @@ package Praati::Controller {
   sub check_user_session_key {
     my ($user_session_key) = @_;
     $user_session_key && $user_session_key =~ /^[0-9a-f]{40}$/;
+  }
+
+  sub get_panel_by_id_or_no_such_page {
+    my ($panel_id) = @_;
+    my $panel = eval { one_record(q{ select * from panels where panel_id = ?; },
+                                  $panel_id); };
+    my $err = $@;
+    if ($err) {
+      Praati::Error::no_such_page() if blessed($err) && $err->type eq 'not one';
+      confess($err);
+    }
+
+    $panel;
   }
 
   sub get_session_user_role {
@@ -1436,6 +1509,12 @@ package Praati::Controller {
     Praati::View::page_main();
   }
 
+  sub new_listening_session_controller {
+    my $panel = get_panel_by_id_or_no_such_page($Q->url_param('panel_id'));
+    # XXX make a new listening session
+    Praati::View::page_new_listening_session($panel);
+  }
+
   sub new_user_controller {
     my %p = $Q->Vars;
     my $errors = {};
@@ -1465,15 +1544,7 @@ package Praati::Controller {
   }
 
   sub panel_ratings_by_user_controller {
-    my $panel = eval {
-                  one_record(q{ select * from panels where panel_id = ?; },
-                             $Q->url_param('panel_id'));
-                };
-    my $err = $@;
-    if ($err) {
-      Praati::Error::no_such_page() if blessed($err) && $err->type eq 'not one';
-      confess($err);
-    }
+    my $panel = get_panel_by_id_or_no_such_page($Q->url_param('panel_id'));
 
     my %p = $Q->Vars;
     my $errors = {};
