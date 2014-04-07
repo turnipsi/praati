@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.73 2014/04/07 17:03:06 je Exp $
+# $Id: praati,v 1.74 2014/04/07 17:05:58 je Exp $
 
 =pod
 
@@ -908,18 +908,13 @@ package Praati::View {
   sub form_new_listening_session {
     my $default_session_name = localtime();;
 
-    # XXX the use of radio_group here is a bit strange... perhaps use input()
-    # XXX directly?
+    my %radiogroup = (-name => 'listening_session_type', -type => 'radio');
     my $type_choice
       = table(
           Tr([
-               td(input({ -name  => 'listening_session_type',
-                          -type  => 'radio',
-                          -value => 'asc', },
+               td(input({ %radiogroup, -value => 'asc', },
                         'Play songs from worst to best')),
-               td(input({ -name  => 'listening_session_type',
-                          -type  => 'radio',
-                          -value => 'desc_asc', },
+               td(input({ %radiogroup, -value => 'desc_asc', },
                         'Play to the worst, then to the best from position:')
                   . textfield('song_position'))]));
 
