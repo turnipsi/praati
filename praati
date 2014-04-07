@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.75 2014/04/07 17:08:52 je Exp $
+# $Id: praati,v 1.76 2014/04/07 18:56:57 je Exp $
 
 =pod
 
@@ -279,6 +279,51 @@ package Praati::Model {
         listening_session_id   integer      primary key not null,
         listening_session_name varchar(256) unique not null,
         panel_id               integer      not null references panels(panel_id)
+      );
+
+      create table if not exists listening_events (
+        listening_event_id     integer primary key not null,
+        listening_event_number integer not null,
+        listening_event_shown  integer not null,
+        listening_session_id   integer not null
+          references listening_sessions(listening_session_id),
+        ls_song_position_id    integer not null
+          references ls_song_positions(ls_song_position_id),
+
+        unique(listening_event_number, listening_session_id)
+      );
+
+      create table if not exists ls_song_positions (
+        ls_song_position_id integer primary key not null,
+        song_id             integer not null references songs(song_id),
+        song_position       integer unique not null
+      );
+
+      create table if not exists ls_song_ratings (
+        ls_song_rating_id    integer primary key not null,
+        listening_session_id integer not null
+          references listening_sessions(listening_session_id),
+        song_rating_comment varchar(4096) not null,
+        song_id             integer       not null references songs(song_id),
+        user_id             integer       not null references users(user_id),
+
+        unique(listening_session_id, song_id, user_id)
+      );
+
+      create table if not exists ls_song_rating_values (
+        ls_song_rating_value_id integer primary key not null,
+
+        song_rating_value_value decimal(2) not null
+          check(0 <= song_rating_value_value
+                 and song_rating_value_value <= 10),
+
+        song_rating_normalized_value_value decimal(5) not null
+          check(0 <= song_rating_normalized_value_value
+                 and song_rating_normalized_value_value <= 10),
+
+        ls_song_rating_id integer unique not null
+          references ls_song_ratings(ls_song_rating_id)
+            on delete cascade
       );
 
       -- create views
