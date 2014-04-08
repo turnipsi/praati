@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.11 2014/04/05 19:54:55 je Exp $
+# $Id: test,v 1.12 2014/04/08 19:26:12 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -11,7 +11,7 @@ use warnings FATAL => qw(all);
 use CGI;
 use HTML::SimpleParse;
 use HTML::TableContentParser;
-use Test::More tests => 6;
+use Test::More tests => 8;
 use Test::WWW::Mechanize;
 
 
@@ -225,4 +225,35 @@ $critic1
                              "Personal Jesus (The Stargate Mix)" => '3.5',
                              "Heaven"                            => '3.5',
                              "Soothe My Soul"                    => '4.0',
+                           });
+
+# XXX should also implement logout() test
+
+$critic2
+  and $critic2->login('critic')
+  and $critic2->rate_songs('Depeche Mode - Best of Greatest Hits',
+                           {
+                             "Personal Jesus"                    =>  '2.0',
+                             "Just Can't Get Enough"             =>  '3.5',
+                             "Everything Counts"                 =>  '8.0',
+                             "Enjoy The Silence"                 =>  '3.0',
+                             "Shake The Disease"                 =>  '7.5',
+                             "See You"                           =>  '3.0',
+                             "It's No Good"                      =>  '0.0',
+                             "Strangelove"                       =>  '3.5',
+                             "Suffer Well"                       =>  '2.0',
+                             "Dream On"                          =>  '9.0',
+                             "People Are People"                 =>  '4.5',
+                             "Martyr"                            =>  '8.0',
+                             "Walking In My Shoes"               =>  '1.5',
+                             "I Feel You"                        =>  '4.0',
+                             "Precious"                          =>  '6.5',
+                             "Master And Servant"                =>  '4.5',
+                             "New Life"                          =>  '9.5',
+                             "Never Let Me Down Again"           => '10.0',
+                             "Wrong"                             =>  '0.5',
+                             "Peace"                             =>  '3.5',
+                             "Personal Jesus (The Stargate Mix)" =>  '4.0',
+                             "Heaven"                            =>  '9.5',
+                             "Soothe My Soul"                    =>  '8.0',
                            });
