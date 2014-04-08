@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.77 2014/04/07 19:01:33 je Exp $
+# $Id: praati,v 1.78 2014/04/08 19:21:23 je Exp $
 
 =pod
 
@@ -953,6 +953,8 @@ package Praati::View {
   #
 
   sub form_new_listening_session {
+    my ($errors) = @_;
+
     my $default_session_name = localtime();;
 
     my %types = (
@@ -960,8 +962,10 @@ package Praati::View {
       desc_asc => 'Play to the worst, then to the best from position:',
     );
 
-    # XXX the use of radio_group here is a bit strange... perhaps use input()
-    # XXX directly?
+    my $song_position_error = maybe_error(song_position => $errors,
+                                          sub { '(' . concat(@_) . ')'; })
+                                // '';
+
     my $type_choice
       = table(
           Tr([
@@ -969,7 +973,7 @@ package Praati::View {
                               'asc', '', \%types)),
                td(radio_group(listening_session_type => [ qw(desc_asc) ],
                               '', '', \%types)
-                  . textfield('song_position'))]));
+                  . textfield('song_position') . $song_position_error)]));
 
     form({ -method => 'post' },
          table(
@@ -1096,11 +1100,11 @@ package Praati::View {
   }
 
   sub page_new_listening_session {
-    my ($panel) = @_;
+    my ($errors, $panel) = @_;
 
     my $content
       = p(qq{Create a new listening session for panel "$panel->{panel_name}":})
-        . form_new_listening_session();
+        . form_new_listening_session($errors);
 
     page('New listening session',
          $content);
@@ -1124,7 +1128,7 @@ package Praati::View {
 
     my $content
       = p(sprintf('This panel is "%s".', e($panel->{panel_name}))
-          . (maybe_error('*', $errors, sub { p(join('' => @_)); }) // '')
+          . (maybe_error('*', $errors, sub { p(concat(@_)); }) // '')
           . $panel_ratings_form);
 
     page(sprintf(qq{Rate songs for "%s"}, e($panel->{panel_name})),
@@ -1558,8 +1562,23 @@ package Praati::Controller {
 
   sub new_listening_session_controller {
     my $panel = get_panel_by_id_or_no_such_page($Q->url_param('panel_id'));
-    # XXX make a new listening session
-    Praati::View::page_new_listening_session($panel);
+
+    my %p = $Q->Vars;
+    my $errors = {};
+
+    if ($p{new_listening_session}) {
+      if ($p{listening_session_type}
+            && $p{listening_session_type} eq 'desc_asc'
+            && $p{song_position} !~ /^(\d+)$/) {
+        add_ui_error($errors, song_position => 'Song position is not valid');
+      }
+
+      if (not %$errors) {
+        # ...;
+      }
+    }
+
+    Praati::View::page_new_listening_session($errors, $panel);
   }
 
   sub new_user_controller {
@@ -1567,7 +1586,14 @@ package Praati::Controller {
     my $errors = {};
 
     if ($p{submit_new_user}) {
-      if ($p{user_password} ne $p{user_password_again}) {
+      if (not $p{user_password}) {
+        add_ui_error($errors, user_password => 'Password is missing.');
+      }
+      if (not $p{user_password_again}) {
+        add_ui_error($errors, user_password_again => 'Password is missing.');
+      }
+      if ($p{user_password} && $p{user_password_again}
+            && $p{user_password} ne $p{user_password_again}) {
         add_ui_error($errors, '*', 'Passwords do not match.');
       }
 
