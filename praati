@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.79 2014/04/08 19:26:11 je Exp $
+# $Id: praati,v 1.80 2014/04/09 18:41:57 je Exp $
 
 =pod
 
@@ -362,6 +362,10 @@ package Praati::Model {
                where song_rating_value_value is not null
                group by panel_id, user_id;
 
+      create view if not exists ls_song_ratings_with_sessions
+        as select * from ls_song_ratings
+             join listening_sessions using (listening_session_id);
+
       -- create triggers
 
       create trigger if not exists insert_songinfos
@@ -518,11 +522,14 @@ package Praati::Model {
 
   sub debug_query {
     # use Data::Dumper;
-    # warn Dumper(records(q{ select * from users; }));
-    # ...
+    # warn Dumper(records(q{ select * from listening_sessions; }));
+    # warn Dumper(records(q{ select * from ls_song_ratings; }));
+    # warn Dumper(records(q{ select * from ls_song_rating_values; }));
   }
 
+  #
   # user handling
+  #
 
   sub add_new_user {
     my ($errors, $user_email, $user_name, $user_password) = @_;
@@ -600,7 +607,9 @@ package Praati::Model {
     }
   }
 
+  #
   # user sessions handling
+  #
 
   sub add_user_session {
     my ($user_email, $user_session_key) = @_;
@@ -718,6 +727,53 @@ package Praati::Model {
                   and song_rating_normalized_value_value is null; },
           $panel_id,
           $user_id);
+  }
+
+  #
+  # listening sessions handling
+  #
+
+  sub new_listening_session {
+    my ($panel, $ls_name, $ls_type, $song_position) = @_;
+
+    transaction(sub {
+      query(q{ insert into listening_sessions (listening_session_name, panel_id)
+               values (?, ?); },
+            $ls_name,
+            $panel->{panel_id});
+
+      my $listening_session_id = last_insert_id();
+
+      query(q{
+              insert into ls_song_ratings (listening_session_id,
+                                           song_rating_comment,
+                                           song_id,
+                                           user_id)
+                select ?, song_rating_comment, song_id, user_id
+                  from song_ratings
+                    where panel_id = ?; },
+            $listening_session_id,
+            $panel->{panel_id});
+
+      query(q{
+              insert into ls_song_rating_values
+                  (song_rating_value_value,
+                   song_rating_normalized_value_value,
+                   ls_song_rating_id)
+                select srwnv.song_rating_value_value,
+                       srwnv.song_rating_normalized_value_value,
+                       ls_song_ratings_with_sessions.ls_song_rating_id
+                  from song_ratings_with_normalized_values as srwnv
+                    cross join ls_song_ratings_with_sessions
+                where srwnv.song_rating_value_value is not null
+                  and srwnv.song_rating_normalized_value_value is not null
+                  and ls_song_ratings_with_sessions.panel_id = srwnv.panel_id
+                  and ls_song_ratings_with_sessions.song_id  = srwnv.song_id
+                  and ls_song_ratings_with_sessions.user_id  = srwnv.user_id
+                  and ls_song_ratings_with_sessions.listening_session_id = ?;
+            },
+            $listening_session_id);
+    });
   }
 }
 
@@ -975,13 +1031,18 @@ package Praati::View {
                               '', '', \%types)
                   . textfield('song_position') . $song_position_error)]));
 
+    my $error_fn = sub { td({ -colspan => 2 }, join(' ' => @_)) };
+
     form({ -method => 'post' },
          table(
            Tr([
+                maybe_error('*' => $errors, $error_fn),
+                maybe_error(listening_session_name => $errors, $error_fn),
                 td([ 'Listening session name:',
                      textfield('listening_session_name',
                                $default_session_name) ]),
 
+                maybe_error(listening_session_type => $errors, $error_fn),
                 td([ 'Select session type:', $type_choice ]),
                 td({ -colspan => 2 },
                    [ submit('new_listening_session', 'Create') ])])));
@@ -1567,14 +1628,30 @@ package Praati::Controller {
     my $errors = {};
 
     if ($p{new_listening_session}) {
-      if ($p{listening_session_type}
-            && $p{listening_session_type} eq 'desc_asc'
-            && $p{song_position} !~ /^(\d+)$/) {
+      if (!$p{listening_session_name}) {
+        add_ui_error($errors,
+                     listening_session_name
+                       => 'Listening session name is missing.');
+      }
+
+      if (!$p{listening_session_type}) {
+        add_ui_error($errors,
+                     listening_session_type => 'Session type is missing.');
+      } elsif ($p{listening_session_type} eq 'desc_asc'
+                 && (!$p{song_position} || $p{song_position} !~ /^(\d+)$/)) {
         add_ui_error($errors, song_position => 'Song position is not valid');
       }
 
       if (not %$errors) {
-        # ...;
+        eval {
+          Praati::Model::new_listening_session($panel,
+                                               @p{ qw(listening_session_name
+                                                      listening_session_type
+                                                      song_position) });
+        };
+        if ($@) { add_unknown_ui_error($errors, '*', $@); }
+
+        return redirect('/XXX') unless %$errors;
       }
     }
 
