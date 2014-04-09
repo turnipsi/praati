@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.80 2014/04/09 18:41:57 je Exp $
+# $Id: praati,v 1.81 2014/04/09 19:10:42 je Exp $
 
 =pod
 
@@ -365,6 +365,15 @@ package Praati::Model {
       create view if not exists ls_song_ratings_with_sessions
         as select * from ls_song_ratings
              join listening_sessions using (listening_session_id);
+
+      create view if not exists ls_song_ratings_with_values
+        as select * from ls_song_ratings
+             left outer join ls_song_rating_values using (ls_song_rating_id);
+
+      create view if not exists ls_song_ratings_with_set_values
+        as select * from ls_song_ratings_with_values
+             where song_rating_value_value is not null
+               and song_rating_normalized_value_value is not null;
 
       -- create triggers
 
@@ -773,6 +782,11 @@ package Praati::Model {
                   and ls_song_ratings_with_sessions.listening_session_id = ?;
             },
             $listening_session_id);
+
+      # XXX should try to get songs in winning order
+      my $songs = records(q{ select * from ls_song_ratings_with_set_values
+                               where listening_session_id = ?; },
+                          $listening_session_id);
     });
   }
 }
