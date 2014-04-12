@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.83 2014/04/12 11:49:22 je Exp $
+# $Id: praati,v 1.84 2014/04/12 12:53:31 je Exp $
 
 =pod
 
@@ -546,9 +546,8 @@ package Praati::Model {
 
   sub debug_query {
     # use Data::Dumper;
-    # warn Dumper(records(q{ select * from listening_sessions; }));
-    # warn Dumper(records(q{ select * from ls_song_ratings; }));
-    # warn Dumper(records(q{ select * from ls_song_rating_values; }));
+    # warn Dumper(records(q{ select * from listening_events;  }));
+    # warn Dumper(records(q{ select * from ls_song_positions; }));
   }
 
   #
@@ -794,15 +793,39 @@ package Praati::Model {
                   and ls_song_ratings_with_sessions.panel_id = srwnv.panel_id
                   and ls_song_ratings_with_sessions.song_id  = srwnv.song_id
                   and ls_song_ratings_with_sessions.user_id  = srwnv.user_id
-                  and ls_song_ratings_with_sessions.listening_session_id = ?;
-            },
+                  and ls_song_ratings_with_sessions.listening_session_id = ?; },
             $listening_session_id);
 
-      my $songs = records(q{ select * from ls_song_rating_results
-                               where listening_session_id = ?; },
-                          $listening_session_id);
+      my $song_ids = columns(q{ select song_id from ls_song_rating_results
+                                  where listening_session_id = ?; },
+                             $listening_session_id);
 
-      # XXX setup ls_song_positions and listening_events based on $songs
+      my $add_song_positions_sth = $DB->prepare(q{
+        insert into ls_song_positions
+            (listening_session_id, song_id, song_position)
+          values (?, ?, ?);
+      });
+
+      my $add_listening_events_sth = $DB->prepare(q{
+        insert into listening_events
+            (listening_event_number, listening_event_shown, ls_song_position_id)
+          values (?, ?, ?);
+      });
+
+      my $song_position          = 1;
+      my $listening_event_number = 1;
+
+      foreach my $song_id (@$song_ids) {
+        $add_song_positions_sth
+          ->execute($listening_session_id, $song_id, $song_position++);
+        my $ls_song_position_id = last_insert_id();
+
+        # XXX this is wrong of course, from best song to worst.
+        # XXX should check out $ls_type and $song_position
+
+        $add_listening_events_sth
+          ->execute($listening_event_number++, 0, $ls_song_position_id);
+      }
     });
   }
 }

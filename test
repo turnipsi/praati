@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.13 2014/04/11 19:13:26 je Exp $
+# $Id: test,v 1.14 2014/04/12 12:53:31 je Exp $
 
 use autodie;
 # use diagnostics;
