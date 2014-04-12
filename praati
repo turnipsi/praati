@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.82 2014/04/12 11:47:50 je Exp $
+# $Id: praati,v 1.83 2014/04/12 11:49:22 je Exp $
 
 =pod
 
@@ -1240,13 +1240,11 @@ package Praati::View {
             = link_to(sprintf('listening_sessions/new?panel_id=%d', $panel_id));
           my $all_results_uri
             = link_to(sprintf('panels/results?panel_id=%d', $panel_id));
-          sprintf('%s [%s][%s][%s]',
+          sprintf('%s [%s][%s]',
                   e($panel->{panel_name}),
                   a({ -href => $rate_panel_uri }, 'rate'),
                   a({ -href => $listening_session_uri },
-                    'create a new listening session'),
-                  a({ -href => $all_results_uri },
-                    'all results'));
+                    'create a new listening session'));
         }
       :
     $user_role eq 'critic'
