@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.84 2014/04/12 12:53:31 je Exp $
+# $Id: praati,v 1.85 2014/04/12 18:39:24 je Exp $
 
 =pod
 
@@ -296,7 +296,7 @@ package Praati::Model {
         listening_session_id integer not null references
           listening_sessions(listening_session_id),
         song_id              integer not null references songs(song_id),
-        song_position        integer unique not null,
+        song_position        integer not null,
 
         unique(listening_session_id, song_position)
       );
@@ -388,7 +388,10 @@ package Praati::Model {
                   song_id
              from ls_song_ratings_with_set_values
                group by listening_session_id, song_id
-               order by song_normalized_rating_value_avg desc;
+               order by song_normalized_rating_value_avg desc,
+                        song_rating_value_avg desc,
+                        song_rating_normalized_value_stdev asc,
+                        song_rating_value_stdev asc;
 
       -- create triggers
 
@@ -756,8 +759,32 @@ package Praati::Model {
   # listening sessions handling
   #
 
+  sub find_listening_events_by_song_positions {
+    my ($song_ids, $ls_type, $turning_point_song_position) = @_;
+
+    my $songcount = scalar(@$song_ids);
+
+    $ls_type eq 'asc'
+      ? (undef, reverse(1 .. $songcount))
+      :
+
+    ($ls_type eq 'desc_asc')
+      ? do {
+          # XXX throw a proper error instead of this:
+          die 'XXX Bad turning point song position'
+            unless 1 <= $turning_point_song_position
+                     && $turning_point_song_position <= $songcount;
+
+          (undef, $turning_point_song_position .. $songcount,
+                  reverse(1 .. ($turning_point_song_position - 1)));
+        }
+      :
+
+    confess("Invalid listening_session type: '$ls_type'");
+  }
+
   sub new_listening_session {
-    my ($panel, $ls_name, $ls_type, $song_position) = @_;
+    my ($panel, $ls_name, $ls_type, $turning_point_song_position) = @_;
 
     transaction(sub {
       query(q{ insert into listening_sessions (listening_session_name, panel_id)
@@ -812,19 +839,25 @@ package Praati::Model {
           values (?, ?, ?);
       });
 
-      my $song_position          = 1;
-      my $listening_event_number = 1;
+      my @listening_events_by_song_positions
+        = find_listening_events_by_song_positions($song_ids,
+                                                  $ls_type,
+                                                  $turning_point_song_position);
 
-      foreach my $song_id (@$song_ids) {
-        $add_song_positions_sth
-          ->execute($listening_session_id, $song_id, $song_position++);
+      for (my $song_pos = 1;
+           defined($song_ids->[ $song_pos - 1 ]);
+           $song_pos++) {
+        $add_song_positions_sth->execute($listening_session_id,
+                                         $song_ids->[ $song_pos - 1 ],
+                                         $song_pos);
+
         my $ls_song_position_id = last_insert_id();
 
-        # XXX this is wrong of course, from best song to worst.
-        # XXX should check out $ls_type and $song_position
-
         $add_listening_events_sth
-          ->execute($listening_event_number++, 0, $ls_song_position_id);
+          ->execute($listening_events_by_song_positions[$song_pos],
+                    0,
+                    $ls_song_position_id);
+
       }
     });
   }
@@ -1071,9 +1104,10 @@ package Praati::View {
       desc_asc => 'Play to the worst, then to the best from position:',
     );
 
-    my $song_position_error = maybe_error(song_position => $errors,
-                                          sub { '(' . concat(@_) . ')'; })
-                                // '';
+    my $song_position_error
+      = maybe_error(turning_point_song_position => $errors,
+                    sub { '(' . concat(@_) . ')'; })
+          // '';
 
     my $type_choice
       = table(
@@ -1082,7 +1116,8 @@ package Praati::View {
                               'asc', '', \%types)),
                td(radio_group(listening_session_type => [ qw(desc_asc) ],
                               '', '', \%types)
-                  . textfield('song_position') . $song_position_error)]));
+                  . textfield('turning_point_song_position')
+                  . $song_position_error)]));
 
     my $error_fn = sub { td({ -colspan => 2 }, join(' ' => @_)) };
 
@@ -1689,16 +1724,19 @@ package Praati::Controller {
         add_ui_error($errors,
                      listening_session_type => 'Session type is missing.');
       } elsif ($p{listening_session_type} eq 'desc_asc'
-                 && (!$p{song_position} || $p{song_position} !~ /^(\d+)$/)) {
-        add_ui_error($errors, song_position => 'Song position is not valid');
+                 && (!$p{turning_point_song_position}
+                       || $p{turning_point_song_position} !~ /^(\d+)$/)) {
+        add_ui_error($errors, turning_point_song_position
+                                => 'Song position is not valid');
       }
 
       if (not %$errors) {
         eval {
-          Praati::Model::new_listening_session($panel,
-                                               @p{ qw(listening_session_name
-                                                      listening_session_type
-                                                      song_position) });
+          Praati::Model::new_listening_session(
+            $panel,
+            @p{ qw(listening_session_name
+                   listening_session_type
+                   turning_point_song_position) });
         };
         if ($@) { add_unknown_ui_error($errors, '*', $@); }
 
