@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.81 2014/04/09 19:10:42 je Exp $
+# $Id: praati,v 1.82 2014/04/12 11:47:50 je Exp $
 
 =pod
 
@@ -374,6 +374,21 @@ package Praati::Model {
         as select * from ls_song_ratings_with_values
              where song_rating_value_value is not null
                and song_rating_normalized_value_value is not null;
+
+      create view if not exists ls_song_rating_results
+        as select avg(song_rating_value_value)
+                    as song_rating_value_avg,
+                  avg(song_rating_normalized_value_value)
+                    as song_normalized_rating_value_avg,
+                  stdev(song_rating_value_value)
+                    as song_rating_value_stdev,
+                  stdev(song_rating_normalized_value_value)
+                    as song_rating_normalized_value_stdev,
+                  listening_session_id,
+                  song_id
+             from ls_song_ratings_with_set_values
+               group by listening_session_id, song_id
+               order by song_normalized_rating_value_avg desc;
 
       -- create triggers
 
@@ -783,10 +798,11 @@ package Praati::Model {
             },
             $listening_session_id);
 
-      # XXX should try to get songs in winning order
-      my $songs = records(q{ select * from ls_song_ratings_with_set_values
+      my $songs = records(q{ select * from ls_song_rating_results
                                where listening_session_id = ?; },
                           $listening_session_id);
+
+      # XXX setup ls_song_positions and listening_events based on $songs
     });
   }
 }
