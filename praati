@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.87 2014/04/13 18:56:57 je Exp $
+# $Id: praati,v 1.88 2014/04/13 19:16:03 je Exp $
 
 =pod
 
@@ -1302,26 +1302,40 @@ package Praati::View {
     my ($panel) = @_;
     my $user_role = get_session_user_role();
 
-    my $panel_id = uri_escape($_->{panel_id});
+    my $panel_id_escaped = uri_escape($panel->{panel_id});
 
-    my $rate_panel_uri = link_to(sprintf('panels/rate?panel_id=%d', $panel_id));
+    my $rate_panel_uri = link_to(sprintf('panels/rate?panel_id=%d',
+                                         $panel_id_escaped));
 
     $user_role eq 'admin'
       ? do {
           my $listening_session_uri
-            = link_to(sprintf('listening_sessions/new?panel_id=%d', $panel_id));
+            = link_to(sprintf('listening_sessions/new?panel_id=%d',
+                              $panel_id_escaped));
           my $all_results_uri
-            = link_to(sprintf('panels/results?panel_id=%d', $panel_id));
+            = link_to(sprintf('panels/results?panel_id=%d',
+                              $panel_id_escaped));
+
+          my $listening_sessions
+            = records(q{ select * from listening_sessions where panel_id = ?
+                          order by listening_session_name; },
+                      $panel->{panel_id});
+
           sprintf('%s [%s][%s]',
                   e($panel->{panel_name}),
                   a({ -href => $rate_panel_uri }, 'rate'),
                   a({ -href => $listening_session_uri },
-                    'create a new listening session'));
+                    'create a new listening session'))
+          . ul(
+              li([ map { listening_session_link($_) }
+                     @$listening_sessions ]));
         }
       :
+
     $user_role eq 'critic'
       ? a({ -href => $rate_panel_uri }, e($panel->{panel_name}))
       :
+
     confess('Asking panel_action_list_item() for an unsupported role');
   }
 
@@ -1407,6 +1421,15 @@ package Praati::View {
     my $blue = 96;
 
     sprintf('#%02x%02x%02x', $red, $green, $blue);
+  }
+
+  sub listening_session_link {
+    my ($listening_session) = @_;
+    my $url_format = 'listening_sessions/overview?listening_session_id=%d';
+    my $id         = uri_escape( $listening_session->{listening_session_id} );
+
+    a({ -href => link_to(sprintf($url_format, $id)) },
+      $listening_session->{listening_session_name});
   }
 
   sub logged_as {
