@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.86 2014/04/13 18:30:42 je Exp $
+# $Id: praati,v 1.87 2014/04/13 18:56:57 je Exp $
 
 =pod
 
@@ -1163,6 +1163,15 @@ package Praati::View {
   # pages
   #
 
+  sub page_listening_session_overview {
+    my ($listening_session) = @_;
+    my $title = 'Listening session overview for '
+                . e($listening_session->{listening_session_name});
+
+    page($title,
+         p($title));
+  }
+
   sub page_login {
     my ($errors, $cookie) = @_;
 
@@ -1201,6 +1210,20 @@ package Praati::View {
                                      -start_html => $start_html_options));
   }
 
+  sub page_logged_out {
+    my ($cookie) = @_;
+    response(cookie => $cookie,
+             page   => standard_page('Logged out',
+                                     p('You are now logged out.')));
+  }
+
+  sub page_logout_error {
+    my ($errors) = @_;
+    # XXX error output to page?
+    page('Logout error',
+         p('Could not log out: ' . $errors->{'*'}));
+  }
+
   sub page_main {
     page('Main',
          p('The main page.') );
@@ -1237,20 +1260,6 @@ package Praati::View {
                Tr $tablerows));
 
     page('Create new user', $form);
-  }
-
-  sub page_logged_out {
-    my ($cookie) = @_;
-    response(cookie => $cookie,
-             page   => standard_page('Logged out',
-                                     p('You are now logged out.')));
-  }
-
-  sub page_logout_error {
-    my ($errors) = @_;
-    # XXX error output to page?
-    page('Logout error',
-         p('Could not log out: ' . $errors->{'*'}));
   }
 
   sub page_new_listening_session {
@@ -1516,6 +1525,11 @@ package Praati::Controller {
 
     local $_ = $path_info;
 
+    # XXX perhaps, instead of restrict_to_roles(),
+    # XXX allow_roles() should be used instead (deny everything by default)
+    # XXX note that code should not be evaluated at all if no permission
+    # XXX is granted.
+
     my $page = eval {
       m|^$|
         ? redirect('/main')
@@ -1527,6 +1541,12 @@ package Praati::Controller {
         ? do {
             restrict_to_roles( qw(admin) );
             new_listening_session_controller();
+          }
+        :
+      m|^/listening_sessions/overview$|
+        ? do {
+            restrict_to_roles( qw(admin) );
+            listening_session_overview_controller();
           }
         :
       m|^/login$|
@@ -1604,10 +1624,10 @@ package Praati::Controller {
     $user_session_key && $user_session_key =~ /^[0-9a-f]{40}$/;
   }
 
-  sub get_panel_by_id_or_no_such_page {
-    my ($panel_id) = @_;
-    my $panel = eval { one_record(q{ select * from panels where panel_id = ?; },
-                                  $panel_id); };
+    # my $panel = eval { one_record(q{ select * from panels where panel_id = ?; },
+  sub one_record_or_no_such_page {
+    my @one_record_params = @_;
+    my $result = eval { one_record(@one_record_params); };
     my $err = $@;
     if ($err) {
       Praati::Error::no_such_page()
@@ -1615,7 +1635,7 @@ package Praati::Controller {
       confess($err);
     }
 
-    $panel;
+    $result;
   }
 
   sub get_session_user_role {
@@ -1640,6 +1660,14 @@ package Praati::Controller {
   #
   # controllers for pages
   #
+
+  sub listening_session_overview_controller {
+    my $listening_session
+      = one_record_or_no_such_page(q{ select * from listening_sessions
+                                        where listening_session_id = ?; },
+                                   $Q->url_param('listening_session_id'));
+    Praati::View::page_listening_session_overview($listening_session);
+  }
 
   sub login_controller {
     my %p = $Q->Vars;
@@ -1714,7 +1742,9 @@ package Praati::Controller {
   }
 
   sub new_listening_session_controller {
-    my $panel = get_panel_by_id_or_no_such_page($Q->url_param('panel_id'));
+    my $panel = one_record_or_no_such_page(q{ select * from panels
+                                                where panel_id = ?; },
+                                           $Q->url_param('panel_id'));
 
     my %p = $Q->Vars;
     my $errors = {};
@@ -1797,7 +1827,9 @@ package Praati::Controller {
   }
 
   sub panel_ratings_by_user_controller {
-    my $panel = get_panel_by_id_or_no_such_page($Q->url_param('panel_id'));
+    my $panel = one_record_or_no_such_page(q{ select * from panels
+                                                where panel_id = ?; },
+                                           $Q->url_param('panel_id'));
 
     my %p = $Q->Vars;
     my $errors = {};
