@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.85 2014/04/12 18:39:24 je Exp $
+# $Id: praati,v 1.86 2014/04/13 18:30:42 je Exp $
 
 =pod
 
@@ -87,6 +87,12 @@ package Praati::Error {
 
   use overload q{""} => sub { $_[0]->message; };
 
+  sub bad_turning_point {
+    confess(
+      __PACKAGE__->new(message => 'Song position is not a valid turning point',
+                       type    => 'bad turning point'));
+  }
+
   sub no_such_page {
     confess(
       __PACKAGE__->new(message => 'No such page',
@@ -98,7 +104,7 @@ package Praati::Error {
     confess(
       __PACKAGE__->new(
         message => "Would be returning not exactly one value, but $count values",
-        type    => 'not one'));
+        type    => 'not exactly one'));
   }
 
   sub unauthorized_access {
@@ -627,7 +633,7 @@ package Praati::Model {
     };
     my $err = $@;
 
-    if ((blessed($err) && $err->type eq 'not one')
+    if ((blessed($err) && $err->type eq 'not exactly one')
           or not Crypt::SaltedHash->validate($salted_hash, $user_password)) {
       add_ui_error($errors, '*', 'Wrong username or password.');
     }
@@ -673,7 +679,7 @@ package Praati::Model {
 
     return $user_id if not $error;
 
-    return if blessed($error) && $error->type eq 'not one';
+    return if blessed($error) && $error->type eq 'not exactly one';
 
     warn "Unknown error in find_session_user: $error";
 
@@ -770,8 +776,7 @@ package Praati::Model {
 
     ($ls_type eq 'desc_asc')
       ? do {
-          # XXX throw a proper error instead of this:
-          die 'XXX Bad turning point song position'
+          Praati::Error::bad_turning_point()
             unless 1 <= $turning_point_song_position
                      && $turning_point_song_position <= $songcount;
 
@@ -1605,7 +1610,8 @@ package Praati::Controller {
                                   $panel_id); };
     my $err = $@;
     if ($err) {
-      Praati::Error::no_such_page() if blessed($err) && $err->type eq 'not one';
+      Praati::Error::no_such_page()
+        if blessed($err) && $err->type eq 'not exactly one';
       confess($err);
     }
 
@@ -1738,9 +1744,17 @@ package Praati::Controller {
                    listening_session_type
                    turning_point_song_position) });
         };
-        if ($@) { add_unknown_ui_error($errors, '*', $@); }
+        my $err = $@;
+        if ($err) {
+          if (blessed($err) && $err->type eq 'bad turning point') {
+            add_ui_error($errors,
+                         turning_point_song_position
+                           => 'Song position is not valid');
+          }
+          else { add_unknown_ui_error($errors, '*', $@); }
+        }
 
-        return redirect('/XXX') unless %$errors;
+        return redirect('/listening_sessions/overview') unless %$errors;
       }
     }
 
