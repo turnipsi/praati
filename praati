@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.88 2014/04/13 19:16:03 je Exp $
+# $Id: praati,v 1.89 2014/04/14 19:18:08 je Exp $
 
 =pod
 
@@ -791,13 +791,15 @@ package Praati::Model {
   sub new_listening_session {
     my ($panel, $ls_name, $ls_type, $turning_point_song_position) = @_;
 
+    my $listening_session_id;
+
     transaction(sub {
       query(q{ insert into listening_sessions (listening_session_name, panel_id)
                values (?, ?); },
             $ls_name,
             $panel->{panel_id});
 
-      my $listening_session_id = last_insert_id();
+      $listening_session_id = last_insert_id();
 
       query(q{
               insert into ls_song_ratings (listening_session_id,
@@ -865,6 +867,8 @@ package Praati::Model {
 
       }
     });
+
+    $listening_session_id;
   }
 }
 
@@ -1005,6 +1009,7 @@ package Praati::View {
                            table
                            td
                            textfield
+                           th
                            Tr
                            ul);
 
@@ -1168,8 +1173,11 @@ package Praati::View {
     my $title = 'Listening session overview for '
                 . e($listening_session->{listening_session_name});
 
-    page($title,
-         p($title));
+    my $content = p($title)
+                  . table_user_rating_counts($listening_session)
+                  . table_listening_events($listening_session);
+
+    page($title, $content);
   }
 
   sub page_login {
@@ -1375,6 +1383,16 @@ package Praati::View {
     concat( table( Tr(\@tablerows) ) );
   }
 
+  sub table_listening_events {
+    my ($listening_session) = @_;
+
+    # XXX
+
+    table(
+      Tr(
+        td('table_listening_events')));
+  }
+
   sub tablerow_song_rating_by_user {
     my ($song_with_rating) = @_;
 
@@ -1404,6 +1422,25 @@ package Praati::View {
          $normalized_value_string)
     . td($comment)
     . td(submit(send_ratings => 'Send'));
+  }
+
+  sub table_user_rating_counts {
+    my ($listening_session) = @_;
+
+    my $user_rating_counts
+      = records(q{ select user_name, count(ls_song_rating_id) as rating_count
+                     from ls_song_ratings_with_set_values
+                       join users using (user_id)
+                     where listening_session_id = ?
+                     group by user_name
+                     order by user_name; },
+                $listening_session->{listening_session_id});
+
+
+    table(
+      Tr([ th([ 'user', 'rating count' ]),
+           map { td([ $_->{user_name}, $_->{rating_count} ]) }
+             @$user_rating_counts]));
   }
 
   #
@@ -1790,13 +1827,14 @@ package Praati::Controller {
       }
 
       if (not %$errors) {
-        eval {
-          Praati::Model::new_listening_session(
-            $panel,
-            @p{ qw(listening_session_name
-                   listening_session_type
-                   turning_point_song_position) });
-        };
+        my $listening_session_id
+          = eval {
+              Praati::Model::new_listening_session(
+                $panel,
+                @p{ qw(listening_session_name
+                       listening_session_type
+                       turning_point_song_position) });
+            };
         my $err = $@;
         if ($err) {
           if (blessed($err) && $err->type eq 'bad turning point') {
@@ -1807,7 +1845,10 @@ package Praati::Controller {
           else { add_unknown_ui_error($errors, '*', $@); }
         }
 
-        return redirect('/listening_sessions/overview') unless %$errors;
+        if (!%$errors && $listening_session_id) {
+          return redirect('/listening_sessions/overview'
+                          . "?listening_session_id=$listening_session_id");
+        }
       }
     }
 
