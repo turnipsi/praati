@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.90 2014/04/15 19:15:26 je Exp $
+# $Id: praati,v 1.91 2014/04/15 19:54:31 je Exp $
 
 =pod
 
@@ -776,22 +776,28 @@ package Praati::Model {
 
     my $songcount = scalar(@$song_ids);
 
-    $ls_type eq 'asc'
-      ? (undef, reverse(1 .. $songcount))
-      :
+    my @song_positions_by_listening_events = (
+      $ls_type eq 'asc'
+        ? (undef, reverse(1 .. $songcount))
+        :
 
-    ($ls_type eq 'desc_asc')
-      ? do {
-          Praati::Error::bad_turning_point()
-            unless 1 <= $turning_point_song_position
-                     && $turning_point_song_position <= $songcount;
+      ($ls_type eq 'desc_asc')
+        ? do {
+            Praati::Error::bad_turning_point()
+              unless 1 <= $turning_point_song_position
+                       && $turning_point_song_position <= $songcount;
 
-          (undef, $turning_point_song_position .. $songcount,
-                  reverse(1 .. ($turning_point_song_position - 1)));
-        }
-      :
+            (undef, $turning_point_song_position .. $songcount,
+                    reverse(1 .. ($turning_point_song_position - 1)));
+          }
+        :
 
-    confess("Invalid listening_session type: '$ls_type'");
+      confess("Invalid listening_session type: '$ls_type'")
+    );
+
+    # makes a hash
+    map { $song_positions_by_listening_events[$_] => $_ }
+      (1 .. $#song_positions_by_listening_events);
   }
 
   sub new_listening_session {
@@ -852,7 +858,7 @@ package Praati::Model {
           values (?, ?, ?);
       });
 
-      my @listening_events_by_song_positions
+      my %listening_events_by_song_positions
         = find_listening_events_by_song_positions($song_ids,
                                                   $ls_type,
                                                   $turning_point_song_position);
@@ -867,7 +873,7 @@ package Praati::Model {
         my $ls_song_position_id = last_insert_id();
 
         $add_listening_events_sth
-          ->execute($listening_events_by_song_positions[$song_pos],
+          ->execute($listening_events_by_song_positions{$song_pos},
                     0,
                     $ls_song_position_id);
 
@@ -1176,11 +1182,13 @@ package Praati::View {
 
   sub page_listening_session_overview {
     my ($listening_session) = @_;
-    my $title = 'Listening session overview for '
-                . e($listening_session->{listening_session_name});
+    my $title = sprintf('Listening session overview for "%s".',
+                        e($listening_session->{listening_session_name}));
 
     my $content = p($title)
+                  . h2('User rating counts')
                   . table_user_rating_counts($listening_session)
+                  . h2('Playback events')
                   . table_listening_events($listening_session);
 
     page($title, $content);
@@ -1392,11 +1400,41 @@ package Praati::View {
   sub table_listening_events {
     my ($listening_session) = @_;
 
-    # XXX
+    my $listening_events
+      = records(q{ select * from listening_events
+                     join ls_song_positions using (ls_song_position_id)
+                   where listening_session_id = ?
+                   order by listening_event_number; },
+                $listening_session->{listening_session_id});
+
+    my $first_event_done = 0;
+
+    my @listening_events_html;
+
+    foreach my $event (@$listening_events) {
+      my $show_link;
+      if (!$first_event_done) {
+        $show_link        = 1;
+        $first_event_done = 1;
+      }
+      else {
+        $show_link = $event->{listening_event_shown} > 0;
+      }
+
+      # XXX should you use the listening_event_id here?
+      my $link = link_to(sprintf('listening_session/event?listening_event_id=%d',
+                                 uri_escape( $event->{listening_event_id} )));
+
+      my $title = "Play song at position $event->{song_position}";
+      my $html = $show_link
+                   ? a({ -href => $link }, $title)
+                   : $title;
+
+      push @listening_events_html, $html;
+    }
 
     table(
-      Tr(
-        td('table_listening_events')));
+      Tr([ map { td($_) } @listening_events_html ]));
   }
 
   sub tablerow_song_rating_by_user {
