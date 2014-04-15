@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.89 2014/04/14 19:18:08 je Exp $
+# $Id: praati,v 1.90 2014/04/15 19:15:26 je Exp $
 
 =pod
 
@@ -158,7 +158,8 @@ package Praati::Model {
                    one_value
                    query
                    records
-                   records_by_key);
+                   records_by_key
+                   rows);
 
   our $DB;
 
@@ -524,6 +525,11 @@ package Praati::Model {
   sub records_by_key {
     my ($key, $sql, @bind_values) = @_;
     $DB->selectall_hashref($sql, $key, undef, @bind_values);
+  }
+
+  sub rows {
+    my ($sql, @bind_values) = @_;
+    $DB->selectall_arrayref($sql, undef, @bind_values);
   }
 
   sub test { @{ records(@_) }  >  0; }
@@ -1428,19 +1434,18 @@ package Praati::View {
     my ($listening_session) = @_;
 
     my $user_rating_counts
-      = records(q{ select user_name, count(ls_song_rating_id) as rating_count
-                     from ls_song_ratings_with_set_values
-                       join users using (user_id)
-                     where listening_session_id = ?
-                     group by user_name
-                     order by user_name; },
-                $listening_session->{listening_session_id});
+      = rows(q{ select user_name, count(ls_song_rating_id) as rating_count
+                  from ls_song_ratings_with_set_values
+                    join users using (user_id)
+                  where listening_session_id = ?
+                  group by user_name
+                  order by rating_count desc, user_name; },
+             $listening_session->{listening_session_id});
 
 
     table(
       Tr([ th([ 'user', 'rating count' ]),
-           map { td([ $_->{user_name}, $_->{rating_count} ]) }
-             @$user_rating_counts]));
+           map { td($_) } @$user_rating_counts]));
   }
 
   #
