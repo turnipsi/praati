@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.92 2014/04/19 09:20:28 je Exp $
+# $Id: praati,v 1.93 2014/04/19 16:26:34 je Exp $
 
 =pod
 
@@ -1187,25 +1187,43 @@ package Praati::View {
   sub page_listening_event {
     my ($event_and_song) = @_;
 
-    my $title = sprintf('%d. %s: %s',
+    my $event_number         = $event_and_song->{listening_event_number};
+    my $listening_session_id = $event_and_song->{listening_session_id};
+
+    my $previous_link = link_uri_if_event_exists($event_number - 1,
+                                                 $listening_session_id,
+                                                 'previous');
+    my $next_link     = link_uri_if_event_exists($event_number + 1,
+                                                 $listening_session_id,
+                                                 'next');
+
+    my $previous_link_html
+      = $previous_link
+          ? (a({ -href => $previous_link }, 'previous') . ' - ')
+          : '';
+
+    my $next_link_html
+      = $next_link
+          ? (' - ' . a({ -href => $next_link }, 'next'))
+          : '';
+
+    my $title = sprintf('%s%d. %s: %s%s',
+                        $previous_link_html,
                         e($event_and_song->{song_position}),
                         e($event_and_song->{artist_name}),
-                        e($event_and_song->{song_name}));
+                        e($event_and_song->{song_name}),
+                        $next_link_html);
 
-    # XXX lookup next event by event_number+1 and listening_session_id
-    # XXX lookup previous event by event_number-1 and listening_session_id
-    # XXX BUT CAN YOU BE SURE THE RESULT IS ONLY ONE RECORD?
-    # XXX (by database constraints?)
 
-    # my $event_number = $event_and_song->{listening_event_number};
-    # my $listening_session = $event_and_song->{listening_event_number};
-    # my $previous_link = link_if_event_exists($event_and_song->{e);
-    # my $next_link     = 0;
+    query(q{ update listening_events
+               set listening_event_shown = listening_event_shown + 1
+                 where listening_event_id = ? },
+          $event_and_song->{listening_event_id});
 
-    use Data::Dumper;
+    # use Data::Dumper;
     page("Listening event for $title",
-         h1($title)
-         . p(Dumper($event_and_song)));
+         h1($title));
+         # . p(Dumper($event_and_song)));
   }
 
   sub page_listening_session_overview {
@@ -1346,47 +1364,6 @@ package Praati::View {
 
     page(sprintf(qq{Rate songs for "%s"}, e($panel->{panel_name})),
          $content);
-  }
-
-  sub panel_action_list_item {
-    my ($panel) = @_;
-    my $user_role = get_session_user_role();
-
-    my $panel_id_escaped = uri_escape($panel->{panel_id});
-
-    my $rate_panel_uri = link_to(sprintf('panels/rate?panel_id=%d',
-                                         $panel_id_escaped));
-
-    $user_role eq 'admin'
-      ? do {
-          my $listening_session_uri
-            = link_to(sprintf('listening_sessions/new?panel_id=%d',
-                              $panel_id_escaped));
-          my $all_results_uri
-            = link_to(sprintf('panels/results?panel_id=%d',
-                              $panel_id_escaped));
-
-          my $listening_sessions
-            = records(q{ select * from listening_sessions where panel_id = ?
-                          order by listening_session_name; },
-                      $panel->{panel_id});
-
-          sprintf('%s [%s][%s]',
-                  e($panel->{panel_name}),
-                  a({ -href => $rate_panel_uri }, 'rate'),
-                  a({ -href => $listening_session_uri },
-                    'create a new listening session'))
-          . ul(
-              li([ map { listening_session_link($_) }
-                     @$listening_sessions ]));
-        }
-      :
-
-    $user_role eq 'critic'
-      ? a({ -href => $rate_panel_uri }, e($panel->{panel_name}))
-      :
-
-    confess('Asking panel_action_list_item() for an unsupported role');
   }
 
   sub page_panels {
@@ -1532,6 +1509,23 @@ package Praati::View {
     sprintf('#%02x%02x%02x', $red, $green, $blue);
   }
 
+  sub link_uri_if_event_exists {
+    my ($event_number, $listening_session_id) = @_;
+
+    my $events = records(q{ select * from listening_events
+                              where listening_event_number = ?
+                                and listening_session_id = ?; },
+                         $event_number,
+                         $listening_session_id);
+
+    return if scalar(@$events) == 0;
+
+    my $event = $events->[0];
+
+    link_to(sprintf('listening_events?listening_event_id=%d',
+                    uri_escape( $event->{listening_event_id} )));
+  }
+
   sub listening_session_link {
     my ($listening_session) = @_;
     my $url_format = 'listening_sessions/overview?listening_session_id=%d';
@@ -1553,6 +1547,47 @@ package Praati::View {
                 e($user->{user_name}),
                 e($user->{user_role}))
       : '';
+  }
+
+  sub panel_action_list_item {
+    my ($panel) = @_;
+    my $user_role = get_session_user_role();
+
+    my $panel_id_escaped = uri_escape($panel->{panel_id});
+
+    my $rate_panel_uri = link_to(sprintf('panels/rate?panel_id=%d',
+                                         $panel_id_escaped));
+
+    $user_role eq 'admin'
+      ? do {
+          my $listening_session_uri
+            = link_to(sprintf('listening_sessions/new?panel_id=%d',
+                              $panel_id_escaped));
+          my $all_results_uri
+            = link_to(sprintf('panels/results?panel_id=%d',
+                              $panel_id_escaped));
+
+          my $listening_sessions
+            = records(q{ select * from listening_sessions where panel_id = ?
+                          order by listening_session_name; },
+                      $panel->{panel_id});
+
+          sprintf('%s [%s][%s]',
+                  e($panel->{panel_name}),
+                  a({ -href => $rate_panel_uri }, 'rate'),
+                  a({ -href => $listening_session_uri },
+                    'create a new listening session'))
+          . ul(
+              li([ map { listening_session_link($_) }
+                     @$listening_sessions ]));
+        }
+      :
+
+    $user_role eq 'critic'
+      ? a({ -href => $rate_panel_uri }, e($panel->{panel_name}))
+      :
+
+    confess('Asking panel_action_list_item() for an unsupported role');
   }
 
   sub song_rating_choice {
