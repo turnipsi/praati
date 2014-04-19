@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.91 2014/04/15 19:54:31 je Exp $
+# $Id: praati,v 1.92 2014/04/19 09:20:28 je Exp $
 
 =pod
 
@@ -292,10 +292,11 @@ package Praati::Model {
         listening_event_id     integer primary key not null,
         listening_event_number integer not null,
         listening_event_shown  integer not null,
-        ls_song_position_id    integer not null
-          references ls_song_positions(ls_song_position_id),
+        listening_session_id   integer not null
+          references listening_sessions(listening_session_id),
+        song_position          integer not null,
 
-        unique(listening_event_number, ls_song_position_id)
+        unique(listening_event_number, listening_session_id)
       );
 
       create table if not exists ls_song_positions (
@@ -853,9 +854,11 @@ package Praati::Model {
       });
 
       my $add_listening_events_sth = $DB->prepare(q{
-        insert into listening_events
-            (listening_event_number, listening_event_shown, ls_song_position_id)
-          values (?, ?, ?);
+        insert into listening_events (listening_event_number,
+                                      listening_event_shown,
+                                      listening_session_id,
+                                      song_position)
+          values (?, ?, ?, ?);
       });
 
       my %listening_events_by_song_positions
@@ -875,7 +878,8 @@ package Praati::Model {
         $add_listening_events_sth
           ->execute($listening_events_by_song_positions{$song_pos},
                     0,
-                    $ls_song_position_id);
+                    $listening_session_id,
+                    $song_pos);
 
       }
     });
@@ -1180,6 +1184,30 @@ package Praati::View {
   # pages
   #
 
+  sub page_listening_event {
+    my ($event_and_song) = @_;
+
+    my $title = sprintf('%d. %s: %s',
+                        e($event_and_song->{song_position}),
+                        e($event_and_song->{artist_name}),
+                        e($event_and_song->{song_name}));
+
+    # XXX lookup next event by event_number+1 and listening_session_id
+    # XXX lookup previous event by event_number-1 and listening_session_id
+    # XXX BUT CAN YOU BE SURE THE RESULT IS ONLY ONE RECORD?
+    # XXX (by database constraints?)
+
+    # my $event_number = $event_and_song->{listening_event_number};
+    # my $listening_session = $event_and_song->{listening_event_number};
+    # my $previous_link = link_if_event_exists($event_and_song->{e);
+    # my $next_link     = 0;
+
+    use Data::Dumper;
+    page("Listening event for $title",
+         h1($title)
+         . p(Dumper($event_and_song)));
+  }
+
   sub page_listening_session_overview {
     my ($listening_session) = @_;
     my $title = sprintf('Listening session overview for "%s".',
@@ -1402,7 +1430,8 @@ package Praati::View {
 
     my $listening_events
       = records(q{ select * from listening_events
-                     join ls_song_positions using (ls_song_position_id)
+                     join ls_song_positions using (listening_session_id,
+                                                   song_position)
                    where listening_session_id = ?
                    order by listening_event_number; },
                 $listening_session->{listening_session_id});
@@ -1422,7 +1451,7 @@ package Praati::View {
       }
 
       # XXX should you use the listening_event_id here?
-      my $link = link_to(sprintf('listening_session/event?listening_event_id=%d',
+      my $link = link_to(sprintf('listening_events?listening_event_id=%d',
                                  uri_escape( $event->{listening_event_id} )));
 
       my $title = "Play song at position $event->{song_position}";
@@ -1640,6 +1669,12 @@ package Praati::Controller {
       m|^/$|
         ? redirect('/main')
         :
+      m|^/listening_events$|
+        ? do {
+            restrict_to_roles( qw(admin) );
+            listening_event_controller();
+          }
+        :
       m|^/listening_sessions/new$|
         ? do {
             restrict_to_roles( qw(admin) );
@@ -1763,6 +1798,18 @@ package Praati::Controller {
   #
   # controllers for pages
   #
+
+  sub listening_event_controller {
+    my $event_and_song
+      = one_record_or_no_such_page(
+          q{ select * from listening_events
+               join ls_song_positions using (listening_session_id, song_position)
+               join songinfos using (song_id)
+             where listening_event_id = ?; },
+          $Q->url_param('listening_event_id'));
+
+    Praati::View::page_listening_event($event_and_song);
+  }
 
   sub listening_session_overview_controller {
     my $listening_session
