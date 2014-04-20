@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.94 2014/04/20 13:39:45 je Exp $
+# $Id: praati,v 1.95 2014/04/20 14:05:46 je Exp $
 
 =pod
 
@@ -391,14 +391,14 @@ package Praati::Model {
                   stdev(song_rating_value_value)
                     as song_rating_value_stdev,
                   stdev(song_rating_normalized_value_value)
-                    as song_rating_normalized_value_stdev,
+                    as song_normalized_rating_value_stdev,
                   listening_session_id,
                   song_id
              from ls_song_ratings_with_set_values
                group by listening_session_id, song_id
                order by song_normalized_rating_value_avg desc,
                         song_rating_value_avg desc,
-                        song_rating_normalized_value_stdev asc,
+                        song_normalized_rating_value_stdev asc,
                         song_rating_value_stdev asc;
 
       -- create triggers
@@ -1189,6 +1189,7 @@ package Praati::View {
 
     my $event_number         = $event_and_song->{listening_event_number};
     my $listening_session_id = $event_and_song->{listening_session_id};
+    my $song_id              = $event_and_song->{song_id};
 
     my $previous_link = link_uri_if_event_exists($event_number - 1,
                                                  $listening_session_id,
@@ -1214,11 +1215,14 @@ package Praati::View {
                         e($event_and_song->{song_name}),
                         $next_link_html);
 
-    my $ratings_for_song
-      = table_ratings_for_song($event_and_song->{listening_session_id},
-                               $event_and_song->{song_id});
+    my $song_rating_stats = table_song_rating_stats($listening_session_id,
+                                                    $song_id);
+
+    my $ratings_for_song = table_ratings_for_song($listening_session_id,
+                                                  $song_id);
 
     my $page = h1($title)
+               . $song_rating_stats
                . $ratings_for_song;
 
     query(q{ update listening_events
@@ -1498,6 +1502,30 @@ package Praati::View {
          $normalized_value_string)
     . td($comment)
     . td(submit(send_ratings => 'Send'));
+  }
+
+  sub table_song_rating_stats {
+    my ($listening_session_id, $song_id) = @_;
+
+    my $song_rating_stats
+      = one_record(q{ select * from ls_song_rating_results
+                        where listening_session_id = ?
+                          and song_id = ?; },
+                   $listening_session_id,
+                   $song_id);
+
+    my @tablespec = (
+      [ 'normalized rating average' => 'song_normalized_rating_value_avg', ],
+      [ 'rating average'            => 'song_rating_value_avg',            ],
+      [ 'normalized rating standard deviation'
+           => 'song_normalized_rating_value_stdev',                        ],
+      [ 'rating standard deviation' => 'song_rating_value_stdev',          ],
+    );
+
+    table(
+      Tr([ map { td([ $_->[0],
+                      sprintf('%.3f', $song_rating_stats->{ $_->[1] }) ]) }
+             @tablespec ]));
   }
 
   sub table_user_rating_counts {
