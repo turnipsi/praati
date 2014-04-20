@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.93 2014/04/19 16:26:34 je Exp $
+# $Id: praati,v 1.94 2014/04/20 13:39:45 je Exp $
 
 =pod
 
@@ -1214,16 +1214,19 @@ package Praati::View {
                         e($event_and_song->{song_name}),
                         $next_link_html);
 
+    my $ratings_for_song
+      = table_ratings_for_song($event_and_song->{listening_session_id},
+                               $event_and_song->{song_id});
+
+    my $page = h1($title)
+               . $ratings_for_song;
 
     query(q{ update listening_events
                set listening_event_shown = listening_event_shown + 1
                  where listening_event_id = ? },
           $event_and_song->{listening_event_id});
 
-    # use Data::Dumper;
-    page("Listening event for $title",
-         h1($title));
-         # . p(Dumper($event_and_song)));
+    page("Listening event for $title", $page);
   }
 
   sub page_listening_session_overview {
@@ -1441,6 +1444,29 @@ package Praati::View {
 
     table(
       Tr([ map { td($_) } @listening_events_html ]));
+  }
+
+  sub table_ratings_for_song {
+    my ($listening_session_id, $song_id) = @_;
+
+    my $rows
+      = rows(q{ select user_name,
+                       song_rating_value_value,
+                       round(song_rating_normalized_value_value, 1),
+                       song_rating_comment
+                  from ls_song_ratings_with_set_values
+                    join listening_sessions using (listening_session_id)
+                    join users using (user_id)
+                where listening_session_id = ?
+                  and song_id = ?
+                order by song_rating_normalized_value_value desc; },
+             $listening_session_id,
+             $song_id);
+
+    table(
+      Tr([ th([ 'username', 'rating', 'normalized rating', 'comment' ]),
+           map { td($_) } @$rows ]));
+
   }
 
   sub tablerow_song_rating_by_user {
