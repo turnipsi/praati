@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.96 2014/04/21 08:16:32 je Exp $
+# $Id: praati,v 1.97 2014/04/21 17:13:22 je Exp $
 
 =pod
 
@@ -419,6 +419,23 @@ package Praati::Model {
                join ls_song_ratings_with_set_values
                       using (listening_session_id, song_id);
 
+      create view if not exists user_rating_comparisons
+        as select
+             a.song_id,
+             a.up_to_event_number,
+             a.user_id as user_a_id,
+             b.user_id as user_b_id,
+             a.song_rating_value_value as user_a_rating,
+             b.song_rating_value_value as user_b_rating,
+             a.song_rating_normalized_value_value as user_a_normalized_rating,
+             b.song_rating_normalized_value_value as user_b_normalized_rating
+               from listening_events_and_ratings_up_to_event_number as a
+                 cross join listening_events_and_ratings_up_to_event_number as b
+             where              a.song_id = b.song_id
+               and a.listening_session_id = b.listening_session_id
+               and   a.up_to_event_number = b.up_to_event_number
+               and             a.user_id != b.user_id;
+
       -- create triggers
 
       create trigger if not exists insert_songinfos
@@ -581,10 +598,8 @@ package Praati::Model {
   sub debug_query {
     # use Data::Dumper;
     # warn Dumper(
-    #        records(q{ select *
-    #                     from listening_events_and_ratings_up_to_event_number
-    #                       order by up_to_event_number; }));
-    # warn Dumper(records(q{ select * from ls_song_positions; }));
+    #        records(q{ select * from user_rating_comparisons
+    #                     order by up_to_event_number; }));
   }
 
   #
