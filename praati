@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.97 2014/04/21 17:13:22 je Exp $
+# $Id: praati,v 1.98 2014/04/21 18:54:00 je Exp $
 
 =pod
 
@@ -421,6 +421,7 @@ package Praati::Model {
 
       create view if not exists user_rating_comparisons
         as select
+             a.listening_session_id,
              a.song_id,
              a.up_to_event_number,
              a.user_id as user_a_id,
@@ -435,6 +436,21 @@ package Praati::Model {
                and a.listening_session_id = b.listening_session_id
                and   a.up_to_event_number = b.up_to_event_number
                and             a.user_id != b.user_id;
+
+      create view if not exists user_rating_correlations
+        as select listening_session_id,
+                  up_to_event_number,
+                  user_a_id,
+                  user_b_id,
+                  corr(user_a_rating, user_b_rating)
+                    as rating_correlation,
+                  corr(user_a_normalized_rating, user_b_normalized_rating)
+                    as normalized_rating_correlation
+             from user_rating_comparisons
+               group by listening_session_id,
+                        up_to_event_number,
+                        user_a_id,
+                        user_b_id;
 
       -- create triggers
 
@@ -598,7 +614,7 @@ package Praati::Model {
   sub debug_query {
     # use Data::Dumper;
     # warn Dumper(
-    #        records(q{ select * from user_rating_comparisons
+    #        records(q{ select * from user_rating_correlations
     #                     order by up_to_event_number; }));
   }
 
@@ -1007,6 +1023,28 @@ package Praati::Model::SQLite {
     $db->sqlite_create_aggregate('stdev',
                                  1,
                                  'Praati::Model::SQLite::StandardDeviation');
+
+    $db->sqlite_create_aggregate('corr',
+                                 2,
+                                 'Praati::Model::SQLite::Correlation');
+  }
+}
+
+package Praati::Model::SQLite::Correlation {
+  sub new {
+    my ($class) = @_;
+    bless { a => [], b => [] } => $class;
+  }
+
+  sub step {
+    my ($self, $value_a, $value_b) = @_;
+    push @{ $self->{a} }, $value_a;
+    push @{ $self->{b} }, $value_b;
+  }
+
+  sub finalize {
+    my ($self) = @_;
+    0.5; # XXX
   }
 }
 
