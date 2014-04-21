@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.95 2014/04/20 14:05:46 je Exp $
+# $Id: praati,v 1.96 2014/04/21 08:16:32 je Exp $
 
 =pod
 
@@ -401,6 +401,24 @@ package Praati::Model {
                         song_normalized_rating_value_stdev asc,
                         song_rating_value_stdev asc;
 
+      create view if not exists ls_song_ratings_with_set_values_and_sessions
+        as select * from ls_song_ratings_with_set_values
+             join listening_sessions using (listening_session_id);
+
+      create view if not exists listening_events_up_to_event_number
+        as select a.*, b.listening_event_number as up_to_event_number
+             from listening_events as a
+               cross join listening_events as b
+             where a.listening_event_number <= b.listening_event_number
+               and a.listening_session_id = b.listening_session_id;
+
+      create view if not exists listening_events_and_ratings_up_to_event_number
+        as select *
+             from listening_events_up_to_event_number
+               join ls_song_positions using (listening_session_id, song_position)
+               join ls_song_ratings_with_set_values
+                      using (listening_session_id, song_id);
+
       -- create triggers
 
       create trigger if not exists insert_songinfos
@@ -562,7 +580,10 @@ package Praati::Model {
 
   sub debug_query {
     # use Data::Dumper;
-    # warn Dumper(records(q{ select * from listening_events;  }));
+    # warn Dumper(
+    #        records(q{ select *
+    #                     from listening_events_and_ratings_up_to_event_number
+    #                       order by up_to_event_number; }));
     # warn Dumper(records(q{ select * from ls_song_positions; }));
   }
 
@@ -1458,8 +1479,7 @@ package Praati::View {
                        song_rating_value_value,
                        round(song_rating_normalized_value_value, 1),
                        song_rating_comment
-                  from ls_song_ratings_with_set_values
-                    join listening_sessions using (listening_session_id)
+                  from ls_song_ratings_with_set_values_and_sessions
                     join users using (user_id)
                 where listening_session_id = ?
                   and song_id = ?
@@ -1889,6 +1909,7 @@ package Praati::Controller {
   #
 
   sub listening_event_controller {
+    # XXX this could perhaps use listening_events_and_songs_up_to_event_number?
     my $event_and_song
       = one_record_or_no_such_page(
           q{ select * from listening_events
