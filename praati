@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.98 2014/04/21 18:54:00 je Exp $
+# $Id: praati,v 1.99 2014/04/22 19:19:14 je Exp $
 
 =pod
 
@@ -451,6 +451,16 @@ package Praati::Model {
                         up_to_event_number,
                         user_a_id,
                         user_b_id;
+
+      create view if not exists user_rating_correlations_with_users
+        as select user_rating_correlations.*,
+                  users_a.user_name as user_a_user_name,
+                  users_b.user_name as user_b_user_name
+             from user_rating_correlations
+               join users as users_a
+                 cross join users as users_b
+               where user_a_id = users_a.user_id
+                 and user_b_id = users_b.user_id;
 
       -- create triggers
 
@@ -1031,6 +1041,9 @@ package Praati::Model::SQLite {
 }
 
 package Praati::Model::SQLite::Correlation {
+  use List::MoreUtils qw(pairwise);
+  use List::Util qw(sum);
+
   sub new {
     my ($class) = @_;
     bless { a => [], b => [] } => $class;
@@ -1043,8 +1056,37 @@ package Praati::Model::SQLite::Correlation {
   }
 
   sub finalize {
-    my ($self) = @_;
-    0.5; # XXX
+    my ($self)  = @_;
+
+    my @a = @{ $self->{a} };
+    my @b = @{ $self->{b} };
+
+    confess('Different number of elements in correlation calculation')
+      unless scalar(@a) == scalar(@b);
+
+    my $count = scalar(@a);
+
+    confess('No elements in correlation calculation') unless $count > 0;
+
+    my $sum_a = sum(@a);
+    my $sum_b = sum(@b);
+
+    my $sum_a_sq = sum(map { $_ ** 2 } @a);
+    my $sum_b_sq = sum(map { $_ ** 2 } @b);
+
+    my $sum_a_b_prod = sum(pairwise { $a * $b } @a, @b);
+
+    my $numerator = $count * $sum_a_b_prod - $sum_a * $sum_b;
+    my $denom_1   = sqrt($count * $sum_a_sq - $sum_a ** 2);
+    my $denom_2   = sqrt($count * $sum_b_sq - $sum_b ** 2);
+
+    ($denom_1 != 0 && $denom_2 != 0)
+      ? $numerator / ($denom_1 * $denom_2)
+      :
+    ($denom_1 != 0 || $denom_2 != 0)
+      ? 0.0
+      :
+    1.0;
   }
 }
 
@@ -1295,9 +1337,13 @@ package Praati::View {
     my $ratings_for_song = table_ratings_for_song($listening_session_id,
                                                   $song_id);
 
+    my $user_rating_correlations
+      = table_user_rating_correlations($listening_session_id, $event_number);
+
     my $page = h1($title)
                . $song_rating_stats
-               . $ratings_for_song;
+               . $ratings_for_song
+               . $user_rating_correlations;
 
     query(q{ update listening_events
                set listening_event_shown = listening_event_shown + 1
@@ -1599,6 +1645,21 @@ package Praati::View {
       Tr([ map { td([ $_->[0],
                       sprintf('%.3f', $song_rating_stats->{ $_->[1] }) ]) }
              @tablespec ]));
+  }
+
+  sub table_user_rating_correlations {
+    my ($listening_session_id, $event_number) = @_;
+    my $correlations
+      = records(q{ select * from user_rating_correlations_with_users
+                     where listening_session_id = ?
+                       and up_to_event_number = ?; },
+                $listening_session_id,
+                $event_number);
+
+    # XXX should create a matrix with users as rows and columns
+    # XXX (with correlation value as cell value)
+    use Data::Dumper;
+    Dumper($correlations);
   }
 
   sub table_user_rating_counts {
