@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.99 2014/04/22 19:19:14 je Exp $
+# $Id: praati,v 1.100 2014/04/23 18:28:03 je Exp $
 
 =pod
 
@@ -1119,6 +1119,7 @@ package Praati::View {
 
   use CGI::Carp;
   use URI::Escape;
+  use List::MoreUtils qw(uniq);
   use Scalar::Util qw(blessed);
 
   BEGIN {
@@ -1656,10 +1657,27 @@ package Praati::View {
                 $listening_session_id,
                 $event_number);
 
-    # XXX should create a matrix with users as rows and columns
-    # XXX (with correlation value as cell value)
-    use Data::Dumper;
-    Dumper($correlations);
+    my @userlist
+      = sort(uniq(map { $_->{user_a_user_name}, $_->{user_b_user_name} }
+                    @$correlations));
+    my %user_rownumber = map { $userlist[$_] => ($_ + 1) } (0 .. $#userlist);
+
+    my @table;
+
+    $table[ 0      ][ $_ + 1 ] = $userlist[$_] foreach 0 .. $#userlist;
+    $table[ $_ + 1 ][ 0      ] = $userlist[$_] foreach 0 .. $#userlist;
+
+    foreach my $correlation (@$correlations) {
+      my $i = $user_rownumber{ $correlation->{ user_a_user_name } };
+      my $j = $user_rownumber{ $correlation->{ user_b_user_name } };
+      $table[ $i ][ $j ] = sprintf('%.2f',
+                                   $correlation->{normalized_rating_correlation});
+    }
+
+    table(Tr([ map {
+                 my $i = $_;
+                 td([ map { $table[$i][$_] } (0 .. scalar(@userlist)) ])
+               } (0 .. scalar(@userlist))]));
   }
 
   sub table_user_rating_counts {
