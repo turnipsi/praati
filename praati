@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.101 2014/04/23 18:45:50 je Exp $
+# $Id: praati,v 1.102 2014/04/23 19:03:33 je Exp $
 
 =pod
 
@@ -1618,9 +1618,15 @@ package Praati::View {
       = $normalized_value ? sprintf('%.1f', $normalized_value)
           : '&mdash;';
 
+    my $song_playback_link
+      = a({ -href => link_to(sprintf('song/play?song_id=%d',
+                                     $song_with_rating->{song_id})) },
+          'play');
+
     td(e($song_with_rating->{artist_name}))
     . td(e($song_with_rating->{song_name}))
     . td($rating_choice)
+    . td($song_playback_link)
     . td({ -style => "background-color: $color_for_normalized_value;" },
          $normalized_value_string)
     . td($comment)
@@ -1799,6 +1805,23 @@ package Praati::View {
     confess('Asking panel_action_list_item() for an unsupported role');
   }
 
+  sub play_song {
+    my ($song) = @_;
+
+    # XXX a cleaner way to do this?
+    my $filepath = $song->{song_filepath};
+    open(my $mp3file, '<', $filepath)
+      or confess("Could not open $filepath for reading: $!");
+    local $/ = undef;
+    my $mp3data = <$mp3file>;
+    close($mp3file);
+
+    # XXX should not be a page at all...
+    # XXX should read the song mp3 file and push it with a proper header.
+    page('Song',
+         $mp3data);
+  }
+
   sub song_rating_choice {
     my ($rating_form_id, $song_rating_value_value) = @_;
     my $value = defined $song_rating_value_value
@@ -1955,6 +1978,12 @@ package Praati::Controller {
             panel_ratings_by_user_controller();
           }
         :
+      m|^/song/play$|
+        ? do {
+            restrict_to_roles( qw(admin critic) );
+            play_song_controller();
+          }
+        :
       Praati::Error::no_such_page()
     };
     my $err = $@;
@@ -2006,7 +2035,6 @@ package Praati::Controller {
     $user_session_key && $user_session_key =~ /^[0-9a-f]{40}$/;
   }
 
-    # my $panel = eval { one_record(q{ select * from panels where panel_id = ?; },
   sub one_record_or_no_such_page {
     my @one_record_params = @_;
     my $result = eval { one_record(@one_record_params); };
@@ -2257,6 +2285,14 @@ package Praati::Controller {
 
   sub panels_controller {
     Praati::View::page_panels();
+  }
+
+  sub play_song_controller {
+    my $song = one_record_or_no_such_page(q{ select * from songs
+                                               where song_id = ?; },
+                                          $Q->url_param('song_id'));
+
+    Praati::View::play_song($song);
   }
 
   sub unauthorized_access_controller {
