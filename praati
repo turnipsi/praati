@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.100 2014/04/23 18:28:03 je Exp $
+# $Id: praati,v 1.101 2014/04/23 18:45:50 je Exp $
 
 =pod
 
@@ -1342,9 +1342,12 @@ package Praati::View {
       = table_user_rating_correlations($listening_session_id, $event_number);
 
     my $page = h1($title)
-               . $song_rating_stats
-               . $ratings_for_song
-               . $user_rating_correlations;
+               . h2('Song rating statistics')
+                 . $song_rating_stats
+               . h2('Ratings for song')
+                 . $ratings_for_song
+               . h2('User rating correlations')
+                 . $user_rating_correlations;
 
     query(q{ update listening_events
                set listening_event_shown = listening_event_shown + 1
