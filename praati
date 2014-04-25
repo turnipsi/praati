@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.104 2014/04/25 18:18:57 je Exp $
+# $Id: praati,v 1.105 2014/04/25 19:12:43 je Exp $
 
 =pod
 
@@ -1634,8 +1634,8 @@ package Praati::View {
 
     td(e($song_with_rating->{artist_name}))
     . td(e($song_with_rating->{song_name}))
-    . td($rating_choice)
     . td($song_playback_link)
+    . td($rating_choice)
     . td({ -style => "background-color: $color_for_normalized_value;" },
          $normalized_value_string)
     . td($comment)
@@ -1817,18 +1817,14 @@ package Praati::View {
   sub play_song {
     my ($song) = @_;
 
-    # XXX a cleaner way to do this?
     my $filepath = $song->{song_filepath};
     open(my $mp3file, '<', $filepath)
       or confess("Could not open $filepath for reading: $!");
-    local $/ = undef;
-    my $mp3data = <$mp3file>;
+    my $mp3data = do { local $/; <$mp3file> };
     close($mp3file);
 
-    # XXX should not be a page at all...
-    # XXX should read the song mp3 file and push it with a proper header.
-    page('Song',
-         $mp3data);
+    response(page => $mp3data,
+             type => 'audio/mpeg');
   }
 
   sub song_rating_choice {
@@ -2316,6 +2312,7 @@ package Praati::Controller::Response {
     page         => '$',
     redirect_uri => '$',
     status       => '$',
+    type         => '$',
   };
 
   sub page_with_header {
@@ -2324,6 +2321,7 @@ package Praati::Controller::Response {
     my @header_args = (
       defined($self->cookie) ? (-cookie => $self->cookie) : (),
       defined($self->status) ? (-status => $self->status) : (),
+      defined($self->type  ) ? (-type   => $self->type  ) : (),
     );
 
     $q->header(@header_args)
