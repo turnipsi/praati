@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.105 2014/04/25 19:12:43 je Exp $
+# $Id: praati,v 1.106 2014/04/25 19:32:24 je Exp $
 
 =pod
 
@@ -1134,6 +1134,7 @@ package Praati::View {
   BEGIN {
     my @query_methods = qw(a
                            div
+                           embed
                            end_html
                            escapeHTML
                            form
@@ -1347,10 +1348,14 @@ package Praati::View {
     my $ratings_for_song = table_ratings_for_song($listening_session_id,
                                                   $song_id);
 
+    my $embedded_song_player
+      = embed({ -src => link_to_song_playback($song_id) });
+
     my $user_rating_correlations
       = table_user_rating_correlations($listening_session_id, $event_number);
 
     my $page = h1($title)
+               . $embedded_song_player
                . h2('Song rating statistics')
                  . $song_rating_stats
                . h2('Ratings for song')
@@ -1628,8 +1633,7 @@ package Praati::View {
           : '&mdash;';
 
     my $song_playback_link
-      = a({ -href => link_to(sprintf('song/play?song_id=%d',
-                                     $song_with_rating->{song_id})) },
+      = a({ -href => link_to_song_playback($song_with_rating->{song_id}) },
           'play');
 
     td(e($song_with_rating->{artist_name}))
@@ -1731,6 +1735,11 @@ package Praati::View {
     my $blue = 96;
 
     sprintf('#%02x%02x%02x', $red, $green, $blue);
+  }
+
+  sub link_to_song_playback {
+    my ($song_id) = @_;
+    link_to(sprintf('song/play?song_id=%d', $song_id));
   }
 
   sub link_uri_if_event_exists {
