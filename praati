@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.102 2014/04/23 19:03:33 je Exp $
+# $Id: praati,v 1.103 2014/04/25 04:43:08 je Exp $
 
 =pod
 
@@ -14,8 +14,11 @@ A sample Apache configuration:
     Options +ExecCGI
     PerlHandler Apache::PerlRun
     PerlModule autodie                 \
-               diagnostics             \
-               BSD::arc4random         \
+               constant                \
+               overload                \
+               strict                  \
+               utf8                    \
+               warnings                \
                CGI::Carp               \
                CGI::Cookie             \
                CGI::Pretty             \
@@ -28,12 +31,16 @@ A sample Apache configuration:
                Email::Valid            \
                Encode                  \
                Encode::Unicode         \
+               Exporter                \
+               File::Basename          \
                File::Find              \
                File::Glob              \
                List::MoreUtils         \
+               List::Util              \
                Math::Trig              \
                MP3::Tag                \
                POSIX                   \
+               Scalar::Util            \
                Statistics::Descriptive \
                Tie::Hash::NamedCapture \
                URI::Escape
