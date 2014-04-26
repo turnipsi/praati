@@ -1,0 +1,165 @@
+=pod
+
+=head1 Dependencies on different operating systems
+
+=head2 OpenBSD
+
+Required dependencies in OpenBSD (tested with OpenBSD 5.4):
+
+=over
+
+=item *
+
+audio/p5-MP3-Tag
+
+=item *
+
+databases/p5-DBD-SQLite
+
+=item *
+
+databases/p5-DBI
+
+=item *
+
+devel/p5-BSD-arc4random
+
+=item *
+
+devel/p5-List-MoreUtils
+
+=item *
+
+mail/p5-Email-Valid
+
+=item *
+
+math/p5-Statistics-Descriptive
+
+=item *
+
+security/p5-Crypt-SaltedHash
+
+=item *
+
+security/p5-Digest-SHA1
+
+=item *
+
+www/p5-URI
+
+=back
+
+Recommended dependencies (perhaps even required currently, because not tested
+without):
+
+=over
+
+=item *
+
+www/mod_perl
+
+=back
+
+Testing code needs:
+
+=over
+
+=item *
+
+devel/p5-Test-WWW-Mechanize
+
+=item *
+
+www/p5-HTML-SimpleParse
+
+=item *
+
+www/p5-HTML-TableContentParser
+
+=back
+
+=head2 NetBSD
+
+Required dependencies in NetBSD (not tested yet, but should be):
+
+=over
+
+=item *
+
+audio/p5-MP3-Tag
+
+=item *
+
+databases/p5-DBD-SQLite
+
+=item *
+
+databases/p5-DBI
+
+=item *
+
+devel/p5-List-MoreUtils
+
+=item *
+
+lang/perl5
+
+=item *
+
+mail/p5-Email-Valid
+
+=item *
+
+math/p5-Statistics-Descriptive
+
+=item *
+
+security/p5-BSD-arc4random
+
+=item *
+
+security/p5-Crypt-SaltedHash B<IS MISSING!>
+
+=item *
+
+security/p5-Digest-SHA1
+
+=item *
+
+www/p5-URI
+
+=back
+
+Recommended dependencies (perhaps even required currently, because not tested
+without):
+
+=over
+
+=item *
+
+www/ap-perl
+
+=item *
+
+www/apache
+
+=back
+
+Testing code needs:
+
+=over
+
+=item *
+
+wip/p5-HTML-TableContentParser (B<note wip/*!>)
+
+=item *
+
+www/p5-HTML-SimpleParse
+
+=item *
+
+www/p5-Test-WWW-Mechanize
+
+=back
