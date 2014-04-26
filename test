@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.14 2014/04/12 12:53:31 je Exp $
+# $Id: test,v 1.15 2014/04/26 12:28:46 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -11,7 +11,7 @@ use warnings FATAL => qw(all);
 use CGI;
 use HTML::SimpleParse;
 use HTML::TableContentParser;
-use Test::More tests => 10;
+use Test::More tests => 13;
 use Test::WWW::Mechanize;
 
 
@@ -68,6 +68,23 @@ package Praati::User {
     });
   }
 
+  sub logout {
+    my ($self) = @_;
+    my $user_name = $self->name;
+
+    subtest(qq{Login user "$user_name"} => sub {
+      plan(tests => 5);
+
+      $self->main_page_ok()
+        and $self->browser->follow_link_ok({ text => 'Logout' })
+        and $self->browser->text_contains('You are now logged out.')
+        and ($self->browser->get($self->site . '/panels')
+               and ok($self->browser->status() == 403,
+                      'Returned status code 403 for an unauthorized page'))
+        and $self->browser->text_contains('Access unauthorized.');
+    });
+  }
+
   sub lookup_rating_ids {
     my ($self) = @_;
 
@@ -83,10 +100,10 @@ package Praati::User {
         next unless $cells && $cells->[1] && $cells->[1]{data};
         my $songname = $cells->[1]{data};
 
-        next unless $cells->[2] && $cells->[2]{data};
+        next unless $cells->[3] && $cells->[3]{data};
 
         # XXX put html parsing into some subroutine?
-        my $p = HTML::SimpleParse->new($cells->[2]{data}, fix_case => 0);
+        my $p = HTML::SimpleParse->new($cells->[3]{data}, fix_case => 0);
         foreach ($p->tree) {
           if ($_->{type} eq 'starttag') {
             my %args = $p->parse_args($_->{content});
@@ -227,7 +244,7 @@ $critic1
                              "Soothe My Soul"                    => '4.0',
                            });
 
-# XXX should also implement logout() test
+$critic1 and $critic1->logout();
 
 $critic2
   and $critic2->login('critic')
@@ -258,6 +275,8 @@ $critic2
                              "Soothe My Soul"                    =>  '8.0',
                            });
 
+$critic2 and $critic2->logout();
+
 $critic3
   and $critic3->login('critic')
   and $critic3->rate_songs('Depeche Mode - Best of Greatest Hits',
@@ -286,3 +305,5 @@ $critic3
                              "Heaven"                            =>  '5.0',
                              "Soothe My Soul"                    =>  '8.5',
                            });
+
+$critic3 and $critic3->logout();
