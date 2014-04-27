@@ -163,3 +163,88 @@ www/p5-HTML-SimpleParse
 www/p5-Test-WWW-Mechanize
 
 =back
+
+=head2 FreeBSD
+
+Required dependencies in FreeBSD (not tested yet, but should be):
+
+=over
+
+=item *
+
+audio/p5-MP3-Tag
+
+=item *
+
+databases/p5-DBD-SQLite
+
+=item *
+
+databases/p5-DBI
+
+=item *
+
+devel/p5-BSD-arc4random B<IS MISSING!>
+
+=item *
+
+lang/p5-List-MoreUtils
+
+=item *
+
+lang/perl5.18 (B<note!: should test with perl5.1{4,6,8} as well>)
+
+=item *
+
+mail/p5-Email-Valid
+
+=item *
+
+math/p5-Statistics-Descriptive
+
+=item *
+
+net/p5-URI
+
+=item *
+
+security/p5-Crypt-SaltedHash
+
+=item *
+
+security/p5-Digest-SHA1
+
+=back
+
+Recommended dependencies (perhaps even required currently, because not tested
+without):
+
+=over
+
+=item *
+
+www/apache22
+
+=item *
+
+www/mod_perl2
+
+=back
+
+Testing code needs:
+
+=over
+
+=item *
+
+devel/p5-Test-WWW-Mechanize
+
+=item *
+
+www/p5-HTML-TableContentParser
+
+=item *
+
+www/p5-HTML-SimpleParse
+
+=back
