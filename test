@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.16 2014/04/26 12:33:02 je Exp $
+# $Id: test,v 1.17 2014/04/27 12:54:47 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -11,7 +11,7 @@ use warnings FATAL => qw(all);
 use CGI;
 use HTML::SimpleParse;
 use HTML::TableContentParser;
-use Test::More tests => 13;
+use Test::More tests => 15;
 use Test::WWW::Mechanize;
 
 
@@ -26,18 +26,78 @@ package Praati::User {
 
   use Test::More;
 
-  sub new_user {
-    my ($class, $site, $email, $name, $password) = @_;
+  sub create_new_listening_session {
+    my ($self, $panel_name, $ls_name, $ls_type, $song_position) = @_;
 
-    my $self = $class->new(browser  => Test::WWW::Mechanize->new(autolint => 1),
-                           email    => $email,
-                           name     => $name,
-                           password => $password,
-                           site     => $site);
+    if ($ls_type eq 'desc_asc') {
+      confess('Argument error') if ! defined $song_position;
+    } elsif ($ls_type eq 'asc') {
+      confess('Argument error') if defined $song_position;
+    } else {
+      confess('Argument error');
+    }
 
-    $self and $self->register();
+    my $test_title
+      = sprintf('Create a new listening session "%s" (of type %s)',
+                $ls_name,
+                $ls_type);
 
-    $self;
+    subtest($test_title, sub {
+      # XXX plan(tests => 0);
+
+      $self->go_to_new_listening_session_page($panel_name);
+
+      # XXX should actually create the new listening session
+    });
+  }
+
+  sub find_listening_session_create_link {
+    my ($html, $panel_name) = @_;
+
+    my $link;
+
+    my ($p, @nodes) = get_parser_and_nodes($html);
+    for (my $i = 0; $i < $#nodes; $i++) {
+      my $n = $nodes[$i];
+      use Data::Dumper;
+      if ($n->{type} eq 'text' && $n->{content} =~ /\Q$panel_name\E/) {
+        my $ls_node = $nodes[$i + 5];
+        if ($ls_node && $ls_node->{type} eq 'starttag') {
+          my %args = $p->parse_args( $ls_node->{content} );
+          $link = $args{href};
+          last;
+        }
+      }
+    }
+
+    $link;
+  }
+
+  sub get_parser_and_nodes {
+    my ($html) = @_;
+    my $p = HTML::SimpleParse->new($html, fix_case => 0);
+    ($p, $p->tree);
+  }
+
+  sub go_to_new_listening_session_page {
+    my ($self, $panel_name) = @_;
+    subtest(qq{Go to new listening session page for "$panel_name"}, sub {
+      plan(tests => 4);
+
+      $self->main_page_ok()
+        and $self->browser->follow_link_ok({ text => 'Panels' })
+        or return;
+
+      my $ls_create_link
+        = find_listening_session_create_link($self->browser->content(),
+                                             $panel_name);
+
+      return unless $ls_create_link;
+
+      $self->browser->follow_link_ok({ url => $ls_create_link });
+      $self->browser->text_contains(
+        qq{Create a new listening session for panel "$panel_name":});
+    });
   }
 
   sub login {
@@ -102,11 +162,10 @@ package Praati::User {
 
         next unless $cells->[3] && $cells->[3]{data};
 
-        # XXX put html parsing into some subroutine?
-        my $p = HTML::SimpleParse->new($cells->[3]{data}, fix_case => 0);
-        foreach ($p->tree) {
+        my ($p, @nodes) = get_parser_and_nodes($cells->[3]{data});
+        foreach (@nodes) {
           if ($_->{type} eq 'starttag') {
-            my %args = $p->parse_args($_->{content});
+            my %args = $p->parse_args( $_->{content} );
             if ($args{name} && $args{name} =~ /^songs\[(\d+)\].rating_value$/) {
               $rating_ids{ $songname } = $1;
               last;
@@ -122,6 +181,20 @@ package Praati::User {
   sub main_page_ok {
     my ($self) = @_;
     $self->browser->get_ok($self->site);
+  }
+
+  sub new_user {
+    my ($class, $site, $email, $name, $password) = @_;
+
+    my $self = $class->new(browser  => Test::WWW::Mechanize->new(autolint => 1),
+                           email    => $email,
+                           name     => $name,
+                           password => $password,
+                           site     => $site);
+
+    $self and $self->register();
+
+    $self;
   }
 
   sub rate_songs {
@@ -193,7 +266,8 @@ package Praati::User {
 # main
 #
 
-my $site = 'http://localhost/~je/praati/praati';
+my $site       = 'http://localhost/~je/praati/praati';
+my $panel_name = 'Depeche Mode - Best of Greatest Hits';
 
 my $admin1 = Praati::User->new_user($site,
                                     'admin1@example.org',
@@ -217,7 +291,7 @@ my $critic3 = Praati::User->new_user($site,
 
 $critic1
   and $critic1->login('critic')
-  and $critic1->rate_songs('Depeche Mode - Best of Greatest Hits',
+  and $critic1->rate_songs($panel_name,
                            {
                              q{Personal Jesus}                    => '8.0',
                              q{Just Can't Get Enough}             => '1.5',
@@ -248,7 +322,7 @@ $critic1 and $critic1->logout();
 
 $critic2
   and $critic2->login('critic')
-  and $critic2->rate_songs('Depeche Mode - Best of Greatest Hits',
+  and $critic2->rate_songs($panel_name,
                            {
                              q{Personal Jesus}                    =>  '2.0',
                              q{Just Can't Get Enough}             =>  '3.5',
@@ -279,7 +353,7 @@ $critic2 and $critic2->logout();
 
 $critic3
   and $critic3->login('critic')
-  and $critic3->rate_songs('Depeche Mode - Best of Greatest Hits',
+  and $critic3->rate_songs($panel_name,
                            {
                              q{Personal Jesus}                    =>  '7.5',
                              q{Just Can't Get Enough}             =>  '4.0',
@@ -307,3 +381,10 @@ $critic3
                            });
 
 $critic3 and $critic3->logout();
+
+$admin1
+  and $admin1->login('admin')
+  and $admin1->create_new_listening_session($panel_name,
+                                            'Session A',
+                                            'asc');
+
