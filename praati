@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.106 2014/04/25 19:32:24 je Exp $
+# $Id: praati,v 1.107 2014/04/28 19:33:08 je Exp $
 
 =pod
 
@@ -1065,7 +1065,7 @@ package Praati::Model::SQLite::Correlation {
   }
 
   sub finalize {
-    my ($self)  = @_;
+    my ($self) = @_;
 
     my @a = @{ $self->{a} };
     my @b = @{ $self->{b} };

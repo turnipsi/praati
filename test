@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.17 2014/04/27 12:54:47 je Exp $
+# $Id: test,v 1.18 2014/04/28 19:33:09 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -43,11 +43,23 @@ package Praati::User {
                 $ls_type);
 
     subtest($test_title, sub {
-      # XXX plan(tests => 0);
+      plan(tests => 4);
 
       $self->go_to_new_listening_session_page($panel_name);
 
-      # XXX should actually create the new listening session
+      my $formfields = {
+        listening_session_name => $ls_name,
+        listening_session_type => $ls_type,
+      };
+
+      $self->browser->submit_form_ok({ button      => 'new_listening_session',
+                                       with_fields => $formfields },
+                                     'Sent new listening session request');
+
+      $self->browser->base_like(
+        qr{listening_sessions/overview\?listening_session_id=\d+$});
+      $self->browser->text_contains(
+        qq{Listening session overview for "$ls_name".});
     });
   }
 
@@ -117,10 +129,8 @@ package Praati::User {
                          user_password => $self->password,
                        };
 
-      $self->browser->submit_form_ok({
-                                       button      => 'submit_login',
-                                       with_fields => $formfields,
-                                     },
+      $self->browser->submit_form_ok({ button      => 'submit_login',
+                                       with_fields => $formfields, },
                                      'Send login form')
         and $self->browser->base_like(qr{main$})
         and $self->browser->text_contains(
@@ -240,7 +250,7 @@ package Praati::User {
       plan(tests => 5);
 
       $self->main_page_ok()
-        and $self->browser->content_contains('The main page.')
+        and $self->browser->text_contains('The main page.')
         and $self->browser->follow_link_ok({ text => 'New user' })
         or return;
 
@@ -251,10 +261,8 @@ package Praati::User {
                          user_password_again => $self->password,
                        };
 
-      $self->browser->submit_form_ok({
-                                       button      => 'submit_new_user',
-                                       with_fields => $formfields,
-                                     },
+      $self->browser->submit_form_ok({ button      => 'submit_new_user',
+                                       with_fields => $formfields, },
                                      'Send new user form')
         and $self->browser->base_like(qr{login$});
     });
