@@ -4,6 +4,8 @@
 
 =head2 OpenBSD
 
+B<XXX should check and add p5-Test-Deep !!! XXX>
+
 Required dependencies in OpenBSD (tested with OpenBSD 5.4):
 
 =over

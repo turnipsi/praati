@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.18 2014/04/28 19:33:09 je Exp $
+# $Id: test,v 1.19 2014/04/30 04:12:20 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -11,7 +11,7 @@ use warnings FATAL => qw(all);
 use CGI;
 use HTML::SimpleParse;
 use HTML::TableContentParser;
-use Test::More tests => 15;
+use Test::More tests => 16;
 use Test::WWW::Mechanize;
 
 
@@ -24,7 +24,29 @@ package Praati::User {
     site     => '$',
   };
 
+  use Test::Deep;
   use Test::More;
+
+  sub check_listening_session_rating_counts {
+    my ($self, $rating_counts) = @_;
+
+    my $tcp    = HTML::TableContentParser->new();
+    my $tables = $tcp->parse( $self->browser->content() );
+
+    my $test_title = 'Rating counts for all users are correct';
+    if ($tables && $tables->[1] && $tables->[1]{rows}) {
+      my @rows = map {
+                   my $row = $_;
+                   $row->{cells}
+                     ? [map { $_->{data} // () } @{ $row->{cells} }]
+                     : ();
+                 } @{ $tables->[1]{rows} };
+
+      cmp_deeply(\@rows, $rating_counts, $test_title);
+    } else {
+      ok(0, $test_title);
+    }
+  }
 
   sub create_new_listening_session {
     my ($self, $panel_name, $ls_name, $ls_type, $song_position) = @_;
@@ -160,11 +182,11 @@ package Praati::User {
 
     my %rating_ids;
 
-    my $tcp   = HTML::TableContentParser->new();
-    my $table = $tcp->parse( $self->browser->content() );
+    my $tcp    = HTML::TableContentParser->new();
+    my $tables = $tcp->parse( $self->browser->content() );
 
-    if ($table && $table->[1] && $table->[1]{rows}) {
-      foreach my $row (@{ $table->[1]{rows} }) {
+    if ($tables && $tables->[1] && $tables->[1]{rows}) {
+      foreach my $row (@{ $tables->[1]{rows} }) {
         my $cells = $row->{cells};
 
         next unless $cells && $cells->[1] && $cells->[1]{data};
@@ -394,5 +416,9 @@ $admin1
   and $admin1->login('admin')
   and $admin1->create_new_listening_session($panel_name,
                                             'Session A',
-                                            'asc');
-
+                                            'asc')
+  and $admin1->check_listening_session_rating_counts([
+        [ 'Critic One'   => 23, ],
+        [ 'Critic Three' => 23, ],
+        [ 'Critic Two'   => 23, ],
+      ]);
