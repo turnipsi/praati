@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.107 2014/04/28 19:33:08 je Exp $
+# $Id: praati,v 1.108 2014/05/02 19:02:54 je Exp $
 
 =pod
 
@@ -39,6 +39,7 @@ A sample Apache configuration:
                File::Glob              \
                List::MoreUtils         \
                List::Util              \
+               Locale::Maketext        \
                Math::Trig              \
                MP3::Tag                \
                POSIX                   \
@@ -58,6 +59,8 @@ use autodie;
 use strict;
 use utf8;
 use warnings FATAL => qw(all);
+
+use Locale::Maketext;
 
 
 #
@@ -143,6 +146,30 @@ package Praati::Controller {
   sub query_method;
   sub response;
   sub session_user;
+}
+
+
+#
+# localization
+#
+
+package Praati::L10N {
+  use base qw(Locale::Maketext);
+}
+
+package Praati::L10N::fi {
+  use base qw(Praati::L10N);
+
+  our %Lexicon = (
+    'Access unauthorized.' => 'Pääsy kielletty.',
+    'No such page.'        => 'Etsimääsi sivua ei löydy.',
+
+    'Login'    => 'Kirjaudu sisään',
+    'Logout'   => 'Kirjaudu ulos',
+    'Main'     => 'Pääsivu',
+    'New user' => 'Uusi käyttäjä',
+    'Panels'   => 'Raadit',
+  );
 }
 
 
@@ -1131,6 +1158,8 @@ package Praati::View {
   use List::MoreUtils qw(uniq);
   use Scalar::Util qw(blessed);
 
+  our ($Lh);
+
   BEGIN {
     my @query_methods = qw(a
                            div
@@ -1162,6 +1191,15 @@ package Praati::View {
     }
   }
 
+  sub init {
+    # XXX Some logic here would be nice (use user preferences or something?)
+    # XXX Is package namespace the proper place to store this?
+    $Lh = Praati::L10N->get_handle('fi')
+      or confess('Could not get a localization handle');
+  }
+
+  sub _ { $Lh->maketext(@_); }
+
   sub concat { join('' => @_); }
 
   sub e { escapeHTML(@_); }
@@ -1170,11 +1208,11 @@ package Praati::View {
     my ($target) = @_;
 
     my $page_descriptions = {
-      login    => 'Login',
-      logout   => 'Logout',
-      main     => 'Main',
-      new_user => 'New user',
-      panels   => 'Panels',
+      login    => _('Login'),
+      logout   => _('Logout'),
+      main     => _('Main'),
+      new_user => _('New user'),
+      panels   => _('Panels'),
     };
 
     my $description = $page_descriptions->{ $target };
@@ -1224,7 +1262,8 @@ package Praati::View {
 
     my @start_html_opts = (
                             $opts{-start_html} ? @{ $opts{-start_html} } : (),
-                            -title => "Praati - $title",
+                            -encoding => 'UTF-8',
+                            -title    => "Praati - $title",
                           );
 
     start_html(@start_html_opts)
@@ -1488,7 +1527,7 @@ package Praati::View {
 
   sub page_no_such_page {
     standard_page('No such page',
-                  p('No such page.'));
+                  p( _('No such page.') ));
   }
 
   sub page_not_logged_in {
@@ -1521,7 +1560,7 @@ package Praati::View {
 
   sub page_unauthorized_access {
     standard_page('Unauthorized access',
-                  p('Access unauthorized.') );
+                  p( _('Access unauthorized.') ));
   }
 
   #
@@ -1890,6 +1929,7 @@ package Praati::Controller {
 
     eval {
       Praati::Model::init();
+      Praati::View::init();
 
       my $user_session_key = $Q->cookie('user_session_key');
       $Session_user = Praati::Model::find_session_user($user_session_key);
@@ -1915,7 +1955,7 @@ package Praati::Controller {
     my $err = $@;
     if ($err) {
       my $q = CGI->new;
-      print $q->header(),
+      print $q->header(-charset => 'UTF-8'),
             $q->pre($err);
     }
   }
@@ -2333,7 +2373,7 @@ package Praati::Controller::Response {
       defined($self->type  ) ? (-type   => $self->type  ) : (),
     );
 
-    $q->header(@header_args)
+    $q->header(-charset => 'UTF-8', @header_args)
     . $self->page;
   }
 
