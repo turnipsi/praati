@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.108 2014/05/02 19:02:54 je Exp $
+# $Id: praati,v 1.109 2014/05/02 19:08:43 je Exp $
 
 =pod
 
@@ -169,6 +169,17 @@ package Praati::L10N::fi {
     'Main'     => 'Pääsivu',
     'New user' => 'Uusi käyttäjä',
     'Panels'   => 'Raadit',
+
+    'The main page.' => 'Pääsivu.',
+
+    'email address:'  => 'sähköpostiosoite:',
+    'name:'           => 'nimi:',
+    'password:'       => 'salasana:',
+    'password again:' => 'salasana uudestaan:',
+    'Create new user' => 'Luo uusi käyttäjä',
+
+    'Available panels'      => 'Valittavissa olevat raadit',
+    'Available panels are:' => 'Valittavissa olevat raadit ovat:',
   );
 }
 
@@ -1434,11 +1445,11 @@ package Praati::View {
     my $tablerows = [
       maybe_error('*' => $errors, $error_wrapper),
 
-      td([ 'email address:', textfield('user_email')         ]),
-      td([ 'password:',      password_field('user_password') ]),
+      td([ _('email address:'), textfield('user_email')         ]),
+      td([ _('password:'),      password_field('user_password') ]),
 
       td({ -colspan => $table_width },
-         submit(submit_login => 'Login')),
+         submit(submit_login => _('Login'))),
     ];
 
     my $login_refresh_seconds
@@ -1478,7 +1489,7 @@ package Praati::View {
 
   sub page_main {
     page('Main',
-         p('The main page.') );
+         p( _('The main page.') ));
   }
 
   sub page_new_user {
@@ -1493,16 +1504,16 @@ package Praati::View {
       maybe_error('*' => $errors, $error_wrapper),
 
       maybe_error(user_email => $errors, $error_wrapper),
-      td([ 'email address:',  textfield('user_email')               ]),
+      td([ _('email address:'),  textfield('user_email')               ]),
 
       maybe_error(user_name => $errors, $error_wrapper),
-      td([ 'name:',           textfield('user_name')                ]),
+      td([ _('name:'),           textfield('user_name')                ]),
 
-      td([ 'password:',       password_field('user_password')       ]),
-      td([ 'password again:', password_field('user_password_again') ]),
+      td([ _('password:'),       password_field('user_password')       ]),
+      td([ _('password again:'), password_field('user_password_again') ]),
 
       td({ -colspan => $table_width },
-         submit(submit_new_user => 'Create new user')),
+         submit(submit_new_user => _('Create new user'))),
     ];
 
     # XXX repetition
@@ -1554,8 +1565,8 @@ package Praati::View {
     my $panels = records(q{ select * from panels order by panel_name; });
 
     my @panel_action_items = map { panel_action_list_item($_) } @$panels;
-    page('Available panels',
-         p('Available panels are:') . ul( li(\@panel_action_items) ));
+    page(_('Available panels'),
+         p( _('Available panels are:') ) . ul( li(\@panel_action_items) ));
   }
 
   sub page_unauthorized_access {
