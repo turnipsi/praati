@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.109 2014/05/02 19:08:43 je Exp $
+# $Id: praati,v 1.110 2014/05/05 19:46:26 je Exp $
 
 =pod
 
@@ -148,40 +148,13 @@ package Praati::Controller {
   sub session_user;
 }
 
+package Praati::View::L10N {
+  use Exporter qw(import);
+  our @EXPORT = qw(t);
 
-#
-# localization
-#
-
-package Praati::L10N {
-  use base qw(Locale::Maketext);
+  sub t;
 }
 
-package Praati::L10N::fi {
-  use base qw(Praati::L10N);
-
-  our %Lexicon = (
-    'Access unauthorized.' => 'Pääsy kielletty.',
-    'No such page.'        => 'Etsimääsi sivua ei löydy.',
-
-    'Login'    => 'Kirjaudu sisään',
-    'Logout'   => 'Kirjaudu ulos',
-    'Main'     => 'Pääsivu',
-    'New user' => 'Uusi käyttäjä',
-    'Panels'   => 'Raadit',
-
-    'The main page.' => 'Pääsivu.',
-
-    'email address:'  => 'sähköpostiosoite:',
-    'name:'           => 'nimi:',
-    'password:'       => 'salasana:',
-    'password again:' => 'salasana uudestaan:',
-    'Create new user' => 'Luo uusi käyttäjä',
-
-    'Available panels'      => 'Valittavissa olevat raadit',
-    'Available panels are:' => 'Valittavissa olevat raadit ovat:',
-  );
-}
 
 
 #
@@ -190,6 +163,7 @@ package Praati::L10N::fi {
 
 package Praati::Model {
   Praati::Controller->import;
+  Praati::View::L10N->import;   # XXX perhaps not?
 
   use CGI::Carp;
   use Crypt::SaltedHash;
@@ -686,7 +660,7 @@ package Praati::Model {
     my $user_role               = new_user_role();
 
     if (not check_user_email($user_email)) {
-      add_ui_error($errors, 'user_email', 'User email address is not valid.');
+      add_ui_error($errors, 'user_email', t('User email address is not valid.'));
     }
 
     transaction(sub {
@@ -694,12 +668,12 @@ package Praati::Model {
                 $user_email)) {
         add_ui_error($errors,
                      'user_email',
-                     'Email address is already reserved.');
+                     t('Email address is already reserved.'));
       }
 
       if (test(q{ select user_id from users where user_name = ?; },
                 $user_name)) {
-        add_ui_error($errors, 'user_name', 'Username is already reserved.');
+        add_ui_error($errors, 'user_name', t('Username is already reserved.'));
       }
 
       if (not %$errors) {
@@ -1163,6 +1137,7 @@ package Praati::Model::SQLite::StandardDeviation {
 package Praati::View {
   Praati::Controller->import;
   Praati::Model->import;
+  Praati::View::L10N->import;
 
   use CGI::Carp;
   use URI::Escape;
@@ -1205,11 +1180,9 @@ package Praati::View {
   sub init {
     # XXX Some logic here would be nice (use user preferences or something?)
     # XXX Is package namespace the proper place to store this?
-    $Lh = Praati::L10N->get_handle('fi')
+    $Lh = Praati::View::L10N->get_handle('fi')
       or confess('Could not get a localization handle');
   }
-
-  sub _ { $Lh->maketext(@_); }
 
   sub concat { join('' => @_); }
 
@@ -1219,11 +1192,11 @@ package Praati::View {
     my ($target) = @_;
 
     my $page_descriptions = {
-      login    => _('Login'),
-      logout   => _('Logout'),
-      main     => _('Main'),
-      new_user => _('New user'),
-      panels   => _('Panels'),
+      login    => t('Login'),
+      logout   => t('Logout'),
+      main     => t('Main'),
+      new_user => t('New user'),
+      panels   => t('Panels'),
     };
 
     my $description = $page_descriptions->{ $target };
@@ -1445,11 +1418,11 @@ package Praati::View {
     my $tablerows = [
       maybe_error('*' => $errors, $error_wrapper),
 
-      td([ _('email address:'), textfield('user_email')         ]),
-      td([ _('password:'),      password_field('user_password') ]),
+      td([ t('email address:'), textfield('user_email')         ]),
+      td([ t('password:'),      password_field('user_password') ]),
 
       td({ -colspan => $table_width },
-         submit(submit_login => _('Login'))),
+         submit(submit_login => t('Login'))),
     ];
 
     my $login_refresh_seconds
@@ -1489,7 +1462,7 @@ package Praati::View {
 
   sub page_main {
     page('Main',
-         p( _('The main page.') ));
+         p( t('The main page.') ));
   }
 
   sub page_new_user {
@@ -1504,16 +1477,16 @@ package Praati::View {
       maybe_error('*' => $errors, $error_wrapper),
 
       maybe_error(user_email => $errors, $error_wrapper),
-      td([ _('email address:'),  textfield('user_email')               ]),
+      td([ t('email address:'),  textfield('user_email')               ]),
 
       maybe_error(user_name => $errors, $error_wrapper),
-      td([ _('name:'),           textfield('user_name')                ]),
+      td([ t('name:'),           textfield('user_name')                ]),
 
-      td([ _('password:'),       password_field('user_password')       ]),
-      td([ _('password again:'), password_field('user_password_again') ]),
+      td([ t('password:'),       password_field('user_password')       ]),
+      td([ t('password again:'), password_field('user_password_again') ]),
 
       td({ -colspan => $table_width },
-         submit(submit_new_user => _('Create new user'))),
+         submit(submit_new_user => t('Create new user'))),
     ];
 
     # XXX repetition
@@ -1538,7 +1511,7 @@ package Praati::View {
 
   sub page_no_such_page {
     standard_page('No such page',
-                  p( _('No such page.') ));
+                  p( t('No such page.') ));
   }
 
   sub page_not_logged_in {
@@ -1565,13 +1538,13 @@ package Praati::View {
     my $panels = records(q{ select * from panels order by panel_name; });
 
     my @panel_action_items = map { panel_action_list_item($_) } @$panels;
-    page(_('Available panels'),
-         p( _('Available panels are:') ) . ul( li(\@panel_action_items) ));
+    page(t('Available panels'),
+         p( t('Available panels are:') ) . ul( li(\@panel_action_items) ));
   }
 
   sub page_unauthorized_access {
     standard_page('Unauthorized access',
-                  p( _('Access unauthorized.') ));
+                  p( t('Access unauthorized.') ));
   }
 
   #
@@ -1907,6 +1880,48 @@ package Praati::View {
           0 .. (Praati::Constants::MAX_SONG_RATING / $step_size))
     );
   }
+}
+
+
+#
+# localization
+#
+
+package Praati::View::L10N {
+  use base qw(Locale::Maketext);
+
+  sub t { $Praati::View::Lh->maketext(@_); }
+}
+
+package Praati::View::L10N::fi {
+  use base qw(Praati::View::L10N);
+
+  our %Lexicon = (
+    'Access unauthorized.' => 'Pääsy kielletty.',
+    'No such page.'        => 'Etsimääsi sivua ei löydy.',
+
+    'Login'    => 'Kirjaudu sisään',
+    'Logout'   => 'Kirjaudu ulos',
+    'Main'     => 'Pääsivu',
+    'New user' => 'Uusi käyttäjä',
+    'Panels'   => 'Raadit',
+
+    'The main page.' => 'Pääsivu.',
+
+    'email address:'  => 'sähköpostiosoite:',
+    'name:'           => 'nimi:',
+    'password:'       => 'salasana:',
+    'password again:' => 'salasana uudestaan:',
+    'Create new user' => 'Luo uusi käyttäjä',
+
+    'Available panels'      => 'Valittavissa olevat raadit',
+    'Available panels are:' => 'Valittavissa olevat raadit ovat:',
+
+    'User email address is not valid.' => 'Sähköpostiosoite ei ole kelvollinen.',
+    'Email address is already reserved.' => 'Sähköpostiosoite on jo varattu.',
+    'Username is already reserved.'      => 'Käyttäjänimi on jo varattu.',
+
+  );
 }
 
 
