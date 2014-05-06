@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.110 2014/05/05 19:46:26 je Exp $
+# $Id: praati,v 1.111 2014/05/06 04:28:02 je Exp $
 
 =pod
 
@@ -725,7 +725,7 @@ package Praati::Model {
 
     if ((blessed($err) && $err->type eq 'not exactly one')
           or not Crypt::SaltedHash->validate($salted_hash, $user_password)) {
-      add_ui_error($errors, '*', 'Wrong username or password.');
+      add_ui_error($errors, '*', t('Wrong username or password.'));
     }
   }
 
@@ -1276,8 +1276,8 @@ package Praati::View {
     my $default_session_name = localtime();;
 
     my %types = (
-      asc      => 'Play songs from worst to best',
-      desc_asc => 'Play to the worst, then to the best from position:',
+      asc      => t('Play songs from worst to best'),
+      desc_asc => t('Play to the worst, then to the best from position:'),
     );
 
     my $song_position_error
@@ -1302,14 +1302,14 @@ package Praati::View {
            Tr([
                 maybe_error('*' => $errors, $error_fn),
                 maybe_error(listening_session_name => $errors, $error_fn),
-                td([ 'Listening session name:',
+                td([ t('Listening session name:'),
                      textfield('listening_session_name',
                                $default_session_name) ]),
 
                 maybe_error(listening_session_type => $errors, $error_fn),
-                td([ 'Select session type:', $type_choice ]),
+                td([ t('Select session type:'), $type_choice ]),
                 td({ -colspan => 2 },
-                   [ submit('new_listening_session', 'Create') ])])));
+                   [ submit('new_listening_session', t('Create')) ])])));
   }
 
   sub form_panel_ratings_by_user {
@@ -1379,11 +1379,11 @@ package Praati::View {
 
     my $page = h1($title)
                . $embedded_song_player
-               . h2('Song rating statistics')
+               . h2( t('Song rating statistics') )
                  . $song_rating_stats
-               . h2('Ratings for song')
+               . h2( t('Ratings for song') )
                  . $ratings_for_song
-               . h2('User rating correlations')
+               . h2( t('User rating correlations') )
                  . $user_rating_correlations;
 
     query(q{ update listening_events
@@ -1921,6 +1921,20 @@ package Praati::View::L10N::fi {
     'Email address is already reserved.' => 'Sähköpostiosoite on jo varattu.',
     'Username is already reserved.'      => 'Käyttäjänimi on jo varattu.',
 
+    'Wrong username or password.' => 'Väärä käyttäjänimi tai salasana.',
+
+    'Play songs from worst to best'
+      => 'Soita laulut huonoimmasta parhaimpaan.',
+    'Play to the worst, then to the best from position:'
+      => 'Soita huonoimpaan, sitten parhaimpaan sijoituksesta:',
+
+    'Listening session name:' => 'Kuuntelusession nimi:',
+    'Select session type:'    => 'Valitse session tyyppi:',
+    'Create'                  => 'Luo',
+
+    'Song rating statistics'   => 'Laulun arvostelujen tilastotietoa',
+    'Ratings for song'         => 'Laulun arvostelut',
+    'User rating correlations' => 'Käyttäjien arvostelujen korrelaatiot',
   );
 }
 
