@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.111 2014/05/06 04:28:02 je Exp $
+# $Id: praati,v 1.112 2014/05/06 19:30:04 je Exp $
 
 =pod
 
@@ -1400,9 +1400,9 @@ package Praati::View {
                         e($listening_session->{listening_session_name}));
 
     my $content = p($title)
-                  . h2('User rating counts')
+                  . h2( t('User rating counts') )
                   . table_user_rating_counts($listening_session)
-                  . h2('Playback events')
+                  . h2( t('Playback events') )
                   . table_listening_events($listening_session);
 
     page($title, $content);
@@ -1441,7 +1441,7 @@ package Praati::View {
             Tr $tablerows));
 
     response(cookie => $cookie,
-             page   => standard_page('Login',
+             page   => standard_page(t('Login'),
                                      $page,
                                      -start_html => $start_html_options));
   }
@@ -1449,19 +1449,19 @@ package Praati::View {
   sub page_logged_out {
     my ($cookie) = @_;
     response(cookie => $cookie,
-             page   => standard_page('Logged out',
-                                     p('You are now logged out.')));
+             page   => standard_page(t('Logged out'),
+                                     p( t('You are now logged out.') )));
   }
 
   sub page_logout_error {
     my ($errors) = @_;
-    # XXX error output to page?
-    page('Logout error',
-         p('Could not log out: ' . $errors->{'*'}));
+    warn("Could not log out: " . $errors->{'*'});
+    page(t('Logout error'),
+         p( t('Could not log out for some reason.') ));
   }
 
   sub page_main {
-    page('Main',
+    page(t('Main'),
          p( t('The main page.') ));
   }
 
@@ -1495,7 +1495,7 @@ package Praati::View {
              table(
                Tr $tablerows));
 
-    page('Create new user', $form);
+    page( t('Create new user'), $form);
   }
 
   sub page_new_listening_session {
@@ -1505,18 +1505,18 @@ package Praati::View {
       = p(qq{Create a new listening session for panel "$panel->{panel_name}":})
         . form_new_listening_session($errors);
 
-    page('New listening session',
+    page(t('New listening session'),
          $content);
   }
 
   sub page_no_such_page {
-    standard_page('No such page',
+    standard_page(t('No such page'),
                   p( t('No such page.') ));
   }
 
   sub page_not_logged_in {
-    page('Not logged in',
-         p('You are not logged in.'));
+    page(t('Not logged in'),
+         p( t('You are not logged in.') ));
   }
 
   sub page_panel_ratings_by_user {
@@ -1543,7 +1543,7 @@ package Praati::View {
   }
 
   sub page_unauthorized_access {
-    standard_page('Unauthorized access',
+    standard_page(t('Unauthorized access'),
                   p( t('Access unauthorized.') ));
   }
 
@@ -1657,7 +1657,7 @@ package Praati::View {
 
     my $song_playback_link
       = a({ -href => link_to_song_playback($song_with_rating->{song_id}) },
-          'play');
+          t('play'));
 
     td(e($song_with_rating->{artist_name}))
     . td(e($song_with_rating->{song_name}))
@@ -1680,11 +1680,11 @@ package Praati::View {
                    $song_id);
 
     my @tablespec = (
-      [ 'normalized rating average' => 'song_normalized_rating_value_avg', ],
-      [ 'rating average'            => 'song_rating_value_avg',            ],
-      [ 'normalized rating standard deviation'
-           => 'song_normalized_rating_value_stdev',                        ],
-      [ 'rating standard deviation' => 'song_rating_value_stdev',          ],
+      [ t('normalized rating average') => 'song_normalized_rating_value_avg', ],
+      [ t('rating average')            => 'song_rating_value_avg',            ],
+      [ t('normalized rating standard deviation')
+           => 'song_normalized_rating_value_stdev',                           ],
+      [ t('rating standard deviation') => 'song_rating_value_stdev',          ],
     );
 
     table(
@@ -1739,7 +1739,7 @@ package Praati::View {
 
 
     table(
-      Tr([ th([ 'user', 'rating count' ]),
+      Tr([ th([ t('user'), t('rating count') ]),
            map { td($_) } @$user_rating_counts]));
   }
 
@@ -1832,7 +1832,7 @@ package Praati::View {
                   e($panel->{panel_name}),
                   a({ -href => $rate_panel_uri }, 'rate'),
                   a({ -href => $listening_session_uri },
-                    'create a new listening session'))
+                    t('create a new listening session')))
           . ul(
               li([ map { listening_session_link($_) }
                      @$listening_sessions ]));
@@ -1898,6 +1898,8 @@ package Praati::View::L10N::fi {
 
   our %Lexicon = (
     'Access unauthorized.' => 'Pääsy kielletty.',
+    'Unauthorized access'  => 'Pääsy kielletty',
+    'No such page'         => 'Etsimääsi sivua ei löydy',
     'No such page.'        => 'Etsimääsi sivua ei löydy.',
 
     'Login'    => 'Kirjaudu sisään',
@@ -1907,6 +1909,14 @@ package Praati::View::L10N::fi {
     'Panels'   => 'Raadit',
 
     'The main page.' => 'Pääsivu.',
+
+    'Not logged in'           => 'Ei sisäänkirjautuneena',
+    'You are not logged in.'  => 'Et ole sisäänkirjautuneena.',
+    'Logged out'              => 'Kirjauduttu ulos',
+    'You are now logged out.' => 'Olet nyt kirjautunut ulos.',
+    'Logout error'            => 'Uloskirjautumisvirhe',
+    'Could not log out for some reason.'
+       => 'Uloskirjautuminen ei onnistunut jostain syystä.',
 
     'email address:'  => 'sähköpostiosoite:',
     'name:'           => 'nimi:',
@@ -1928,6 +1938,7 @@ package Praati::View::L10N::fi {
     'Play to the worst, then to the best from position:'
       => 'Soita huonoimpaan, sitten parhaimpaan sijoituksesta:',
 
+    'New listening session'   => 'Uusi kuuntelusessio',
     'Listening session name:' => 'Kuuntelusession nimi:',
     'Select session type:'    => 'Valitse session tyyppi:',
     'Create'                  => 'Luo',
@@ -1935,6 +1946,31 @@ package Praati::View::L10N::fi {
     'Song rating statistics'   => 'Laulun arvostelujen tilastotietoa',
     'Ratings for song'         => 'Laulun arvostelut',
     'User rating correlations' => 'Käyttäjien arvostelujen korrelaatiot',
+
+    'User rating counts' => 'Käyttäjien arvostelujen lukumäärä',
+    'Playback events'    => 'Soittotapahtumat',
+
+    'play' => 'soita',
+
+    'normalized rating average' => 'normalisoitujen arvostelujen keskiarvo',
+    'rating average'            => 'arvostelujen keskiarvo',
+    'normalized rating standard deviation'
+       => 'normalisoitujen arvostelujen keskihajonta',
+    'rating standard deviation' => 'arvostelujen keskihajonta',
+    'user'                      => 'käyttäjä',
+    'rating count'              => 'arvostelujen lukumäärä',
+
+    'create a new listening session' => 'luo uusi kuuntelusessio',
+
+    'To login, cookies must be accepted by the browser.'
+      => 'Kirjautuaksesi "keksien" täytyy olla selaimessasi hyväksyttyjä.',
+
+    'Listening session name is missing.' => 'Kuuntelusession nimi puuttuu.',
+    'Session type is missing.'           => 'Kuuntelusession tyyppi puuttuu.',
+    'Song position is not valid' => 'Laulun sijoitus ei ole kelvollinen.',
+
+    'Password is missing.'    => 'Salasana puuttuu.',
+    'Passwords do not match.' => 'Salasanat eivät täsmää.',
   );
 }
 
@@ -1989,7 +2025,7 @@ package Praati::Controller {
   sub debugging_wrapper {
     my ($fn) = @_;
 
-    warn "Debugging has been turned on, stacktraces end up to the browser";
+    warn 'Debugging has been turned on, stacktraces end up to the browser';
 
     eval { $fn->() };
     my $err = $@;
@@ -2198,7 +2234,7 @@ package Praati::Controller {
       if (not check_user_session_key($user_session_key)) {
         add_ui_error($errors,
                      '*',
-                     'To login, cookies must be accepted by the browser.');
+                     t('To login, cookies must be accepted by the browser.'));
       }
 
       eval {
@@ -2270,17 +2306,17 @@ package Praati::Controller {
       if (!$p{listening_session_name}) {
         add_ui_error($errors,
                      listening_session_name
-                       => 'Listening session name is missing.');
+                       => t('Listening session name is missing.'));
       }
 
       if (!$p{listening_session_type}) {
         add_ui_error($errors,
-                     listening_session_type => 'Session type is missing.');
+                     listening_session_type => t('Session type is missing.'));
       } elsif ($p{listening_session_type} eq 'desc_asc'
                  && (!$p{turning_point_song_position}
                        || $p{turning_point_song_position} !~ /^(\d+)$/)) {
         add_ui_error($errors, turning_point_song_position
-                                => 'Song position is not valid');
+                                => t('Song position is not valid'));
       }
 
       if (not %$errors) {
@@ -2297,7 +2333,7 @@ package Praati::Controller {
           if (blessed($err) && $err->type eq 'bad turning point') {
             add_ui_error($errors,
                          turning_point_song_position
-                           => 'Song position is not valid');
+                           => t('Song position is not valid'));
           }
           else { add_unknown_ui_error($errors, '*', $@); }
         }
@@ -2318,14 +2354,14 @@ package Praati::Controller {
 
     if ($p{submit_new_user}) {
       if (not $p{user_password}) {
-        add_ui_error($errors, user_password => 'Password is missing.');
+        add_ui_error($errors, user_password => t('Password is missing.'));
       }
       if (not $p{user_password_again}) {
-        add_ui_error($errors, user_password_again => 'Password is missing.');
+        add_ui_error($errors, user_password_again => t('Password is missing.'));
       }
       if ($p{user_password} && $p{user_password_again}
             && $p{user_password} ne $p{user_password_again}) {
-        add_ui_error($errors, '*', 'Passwords do not match.');
+        add_ui_error($errors, '*', t('Passwords do not match.'));
       }
 
       eval {
