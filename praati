@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.112 2014/05/06 19:30:04 je Exp $
+# $Id: praati,v 1.113 2014/05/07 19:04:04 je Exp $
 
 =pod
 
@@ -57,7 +57,12 @@ A sample Apache configuration:
 use autodie;
 # use diagnostics;
 use strict;
-use utf8;
+
+# XXX Problems with Locale::Maketext with this!
+# XXX (with Finnish locale, with _1 and \d+ regular expression test)
+# XXX Perhaps related to OpenBSD chroot?
+# use utf8;
+
 use warnings FATAL => qw(all);
 
 use Locale::Maketext;
@@ -148,32 +153,8 @@ package Praati::Controller {
   sub session_user;
 }
 
-package Praati::View::L10N {
-  use Exporter qw(import);
-  our @EXPORT = qw(t);
-
-  sub t;
-}
-
-
-
-#
-# model
-#
-
 package Praati::Model {
-  Praati::Controller->import;
-  Praati::View::L10N->import;   # XXX perhaps not?
-
-  use CGI::Carp;
-  use Crypt::SaltedHash;
-  use DBI;
-  use Email::Valid;
   use Exporter qw(import);
-  use File::Glob qw(bsd_glob);
-  use Math::Trig;
-  use Scalar::Util qw(blessed);
-
   our @EXPORT = qw(last_insert_id
                    one_record
                    one_value
@@ -182,7 +163,39 @@ package Praati::Model {
                    records_by_key
                    rows);
 
-  our $DB;
+  sub last_insert_id;
+  sub one_record;
+  sub one_value;
+  sub query;
+  sub records;
+  sub records_by_key;
+  sub rows;
+}
+
+package Praati::View {
+  use Exporter qw(import);
+  our @EXPORT = qw(t);
+
+  sub t;
+}
+
+#
+# model
+#
+
+package Praati::Model {
+  Praati::Controller->import;
+  Praati::View->import;
+
+  use CGI::Carp;
+  use Crypt::SaltedHash;
+  use DBI;
+  use Email::Valid;
+  use File::Glob qw(bsd_glob);
+  use Math::Trig;
+  use Scalar::Util qw(blessed);
+
+  our $Db;
 
   sub init {
     my %attrs = (
@@ -191,11 +204,11 @@ package Praati::Model {
       RaiseError                       => 1,
       sqlite_allow_multiple_statements => 1,
     );
-    $DB = DBI->connect("dbi:SQLite:dbname=${Praati::Config::DB_file_path}",
+    $Db = DBI->connect("dbi:SQLite:dbname=${Praati::Config::DB_file_path}",
 		       '',
 		       '',
 		       \%attrs);
-    $DB->do('PRAGMA foreign_keys = ON');
+    $Db->do('PRAGMA foreign_keys = ON');
 
     Praati::Model::SQLite::register_sqlite_functions();
 
@@ -208,7 +221,7 @@ package Praati::Model {
   }
 
   sub close {
-    if ($DB) { $DB->disconnect; }
+    if ($Db) { $Db->disconnect; }
   }
 
   sub create_db_tables {
@@ -578,10 +591,10 @@ package Praati::Model {
 
   sub columns {
     my ($sql, @bind_values) = @_;
-    $DB->selectcol_arrayref($sql, {}, @bind_values);
+    $Db->selectcol_arrayref($sql, {}, @bind_values);
   }
 
-  sub last_insert_id { $DB->last_insert_id('', '', '', ''); }
+  sub last_insert_id { $Db->last_insert_id('', '', '', ''); }
 
   sub one_exactly {
     my ($values) = @_;
@@ -597,22 +610,22 @@ package Praati::Model {
 
   sub query {
     my ($sql, @bind_values) = @_;
-    $DB->do($sql, undef, @bind_values);
+    $Db->do($sql, undef, @bind_values);
   }
 
   sub records {
     my ($sql, @bind_values) = @_;
-    $DB->selectall_arrayref($sql, { Slice => {} }, @bind_values);
+    $Db->selectall_arrayref($sql, { Slice => {} }, @bind_values);
   }
 
   sub records_by_key {
     my ($key, $sql, @bind_values) = @_;
-    $DB->selectall_hashref($sql, $key, undef, @bind_values);
+    $Db->selectall_hashref($sql, $key, undef, @bind_values);
   }
 
   sub rows {
     my ($sql, @bind_values) = @_;
-    $DB->selectall_arrayref($sql, undef, @bind_values);
+    $Db->selectall_arrayref($sql, undef, @bind_values);
   }
 
   sub test { @{ records(@_) }  >  0; }
@@ -620,16 +633,16 @@ package Praati::Model {
   sub transaction {
     my ($fn) = @_;
 
-    $DB->begin_work;
+    $Db->begin_work;
 
     eval {
       $fn->();
-      $DB->commit;
+      $Db->commit;
     };
     my $db_error = $@;
 
     if ($db_error) {
-      eval { $DB->rollback; };
+      eval { $Db->rollback; };
       my $rollback_error = $@;
 
       eval {
@@ -812,7 +825,7 @@ package Praati::Model {
     my ($panel_id, $user_id, $song_ratings) = @_;
 
     transaction(sub {
-      my $sth = $DB->prepare(q{ insert or replace into song_ratings_with_values
+      my $sth = $Db->prepare(q{ insert or replace into song_ratings_with_values
                                     (song_rating_comment,
                                      song_rating_value_value,
                                      panel_id,
@@ -930,13 +943,13 @@ package Praati::Model {
                                   where listening_session_id = ?; },
                              $listening_session_id);
 
-      my $add_song_positions_sth = $DB->prepare(q{
+      my $add_song_positions_sth = $Db->prepare(q{
         insert into ls_song_positions
             (listening_session_id, song_id, song_position)
           values (?, ?, ?);
       });
 
-      my $add_listening_events_sth = $DB->prepare(q{
+      my $add_listening_events_sth = $Db->prepare(q{
         insert into listening_events (listening_event_number,
                                       listening_event_shown,
                                       listening_session_id,
@@ -991,7 +1004,7 @@ package Praati::Model::Musicscan {
     my @mp3_filepaths = find_files(sub { /\.mp3$/ }, $panel_musicpath);
 
     my $sth
-      = $Praati::Model::DB->prepare(q{
+      = $Praati::Model::Db->prepare(q{
           insert into songinfos (artist_name,
                                  album_name,
                                  album_year,
@@ -1037,7 +1050,7 @@ package Praati::Model::Musicscan {
 
 package Praati::Model::SQLite {
   sub register_sqlite_functions {
-    my $db = $Praati::Model::DB;
+    my $db = $Praati::Model::Db;
 
     $db->sqlite_create_function('check_user_email',
                                 1,
@@ -1137,14 +1150,14 @@ package Praati::Model::SQLite::StandardDeviation {
 package Praati::View {
   Praati::Controller->import;
   Praati::Model->import;
-  Praati::View::L10N->import;
 
   use CGI::Carp;
-  use URI::Escape;
+  use Encode; # XXX?
   use List::MoreUtils qw(uniq);
   use Scalar::Util qw(blessed);
+  use URI::Escape;
 
-  our ($Lh);
+  our $Lh;
 
   BEGIN {
     my @query_methods = qw(a
@@ -1178,8 +1191,6 @@ package Praati::View {
   }
 
   sub init {
-    # XXX Some logic here would be nice (use user preferences or something?)
-    # XXX Is package namespace the proper place to store this?
     $Lh = Praati::View::L10N->get_handle('fi')
       or confess('Could not get a localization handle');
   }
@@ -1187,6 +1198,8 @@ package Praati::View {
   sub concat { join('' => @_); }
 
   sub e { escapeHTML(@_); }
+
+  sub t { $Lh->maketext(@_); }
 
   sub link_if_not_this_page {
     my ($target) = @_;
@@ -1342,20 +1355,18 @@ package Praati::View {
     my $song_id              = $event_and_song->{song_id};
 
     my $previous_link = link_uri_if_event_exists($event_number - 1,
-                                                 $listening_session_id,
-                                                 'previous');
+                                                 $listening_session_id);
     my $next_link     = link_uri_if_event_exists($event_number + 1,
-                                                 $listening_session_id,
-                                                 'next');
+                                                 $listening_session_id);
 
     my $previous_link_html
       = $previous_link
-          ? (a({ -href => $previous_link }, 'previous') . ' - ')
+          ? (a({ -href => $previous_link }, t('previous')) . ' - ')
           : '';
 
     my $next_link_html
       = $next_link
-          ? (' - ' . a({ -href => $next_link }, 'next'))
+          ? (' - ' . a({ -href => $next_link }, t('next')))
           : '';
 
     my $title = sprintf('%s%d. %s: %s%s',
@@ -1391,7 +1402,8 @@ package Praati::View {
                  where listening_event_id = ? },
           $event_and_song->{listening_event_id});
 
-    page("Listening event for $title", $page);
+    page(t('Listening event for [_1]', $title),
+         $page);
   }
 
   sub page_listening_session_overview {
@@ -1628,7 +1640,10 @@ package Praati::View {
              $song_id);
 
     table(
-      Tr([ th([ 'username', 'rating', 'normalized rating', 'comment' ]),
+      Tr([ th([ t('username'),
+                t('rating'),
+                t('normalized rating'),
+                t('comment') ]),
            map { td($_) } @$rows ]));
 
   }
@@ -1799,9 +1814,9 @@ package Praati::View {
     my $user = one_record(q{ select * from users where user_id = ?; },
                           $user_id);
     $user
-      ? sprintf(qq{Logged in as "%s" (%s)},
-                e($user->{user_name}),
-                e($user->{user_role}))
+      ? t(q{Logged in as "[_1]" ([_2])},
+          e($user->{user_name}),
+          e($user->{user_role}))
       : '';
   }
 
@@ -1830,7 +1845,7 @@ package Praati::View {
 
           sprintf('%s [%s][%s]',
                   e($panel->{panel_name}),
-                  a({ -href => $rate_panel_uri }, 'rate'),
+                  a({ -href => $rate_panel_uri }, t('rate')),
                   a({ -href => $listening_session_uri },
                     t('create a new listening session')))
           . ul(
@@ -1889,8 +1904,6 @@ package Praati::View {
 
 package Praati::View::L10N {
   use base qw(Locale::Maketext);
-
-  sub t { $Praati::View::Lh->maketext(@_); }
 }
 
 package Praati::View::L10N::fi {
@@ -1917,6 +1930,9 @@ package Praati::View::L10N::fi {
     'Logout error'            => 'Uloskirjautumisvirhe',
     'Could not log out for some reason.'
        => 'Uloskirjautuminen ei onnistunut jostain syystä.',
+
+    'Logged in as "[_1]" ([_2])'
+       => 'Olet kirjautuneena käyttäjänä [_1] ([_2])',
 
     'email address:'  => 'sähköpostiosoite:',
     'name:'           => 'nimi:',
@@ -1947,6 +1963,8 @@ package Praati::View::L10N::fi {
     'Ratings for song'         => 'Laulun arvostelut',
     'User rating correlations' => 'Käyttäjien arvostelujen korrelaatiot',
 
+    'Listening event for [_1]' => 'Kuuntelusessio laululle [_1]',
+
     'User rating counts' => 'Käyttäjien arvostelujen lukumäärä',
     'Playback events'    => 'Soittotapahtumat',
 
@@ -1961,6 +1979,7 @@ package Praati::View::L10N::fi {
     'rating count'              => 'arvostelujen lukumäärä',
 
     'create a new listening session' => 'luo uusi kuuntelusessio',
+    'rate'                           => 'arvostele',
 
     'To login, cookies must be accepted by the browser.'
       => 'Kirjautuaksesi "keksien" täytyy olla selaimessasi hyväksyttyjä.',
@@ -1971,6 +1990,14 @@ package Praati::View::L10N::fi {
 
     'Password is missing.'    => 'Salasana puuttuu.',
     'Passwords do not match.' => 'Salasanat eivät täsmää.',
+
+    'username'          => 'käyttäjänimi',
+    'rating'            => 'arvostelu',
+    'normalized rating' => 'normalisoitue arvostelu',
+    'comment'           => 'kommentti',
+
+    'previous' => 'edellinen',
+    'next'     => 'seuraava',
   );
 }
 
