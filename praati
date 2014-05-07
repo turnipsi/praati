@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.113 2014/05/07 19:04:04 je Exp $
+# $Id: praati,v 1.114 2014/05/07 19:17:59 je Exp $
 
 =pod
 
@@ -1152,7 +1152,6 @@ package Praati::View {
   Praati::Model->import;
 
   use CGI::Carp;
-  use Encode; # XXX?
   use List::MoreUtils qw(uniq);
   use Scalar::Util qw(blessed);
   use URI::Escape;
@@ -1408,8 +1407,8 @@ package Praati::View {
 
   sub page_listening_session_overview {
     my ($listening_session) = @_;
-    my $title = sprintf('Listening session overview for "%s".',
-                        e($listening_session->{listening_session_name}));
+    my $title = t('Listening session overview for "[_1]".',
+                  e($listening_session->{listening_session_name}));
 
     my $content = p($title)
                   . h2( t('User rating counts') )
@@ -1450,7 +1449,7 @@ package Praati::View {
     my $page
       = form({ -method => 'post' },
           table(
-            Tr $tablerows));
+            Tr($tablerows)));
 
     response(cookie => $cookie,
              page   => standard_page(t('Login'),
@@ -1505,7 +1504,7 @@ package Praati::View {
     my $form
       = form({ -method => 'post' },
              table(
-               Tr $tablerows));
+               Tr($tablerows)));
 
     page( t('Create new user'), $form);
   }
@@ -1514,7 +1513,8 @@ package Praati::View {
     my ($errors, $panel) = @_;
 
     my $content
-      = p(qq{Create a new listening session for panel "$panel->{panel_name}":})
+      = p(t('Create a new listening session for panel "[_1]":',
+            $panel->{panel_name}))
         . form_new_listening_session($errors);
 
     page(t('New listening session'),
@@ -1538,11 +1538,11 @@ package Praati::View {
                                                         session_user());
 
     my $content
-      = p(sprintf('This panel is "%s".', e($panel->{panel_name}))
+      = p(t('This panel is "[_1]".', e($panel->{panel_name}))
           . (maybe_error('*', $errors, sub { p(concat(@_)); }) // '')
           . $panel_ratings_form);
 
-    page(sprintf(qq{Rate songs for "%s"}, e($panel->{panel_name})),
+    page(t('Rate songs for "[_1]"', e($panel->{panel_name})),
          $content);
   }
 
@@ -1611,7 +1611,7 @@ package Praati::View {
       my $link = link_to(sprintf('listening_events?listening_event_id=%d',
                                  uri_escape( $event->{listening_event_id} )));
 
-      my $title = "Play song at position $event->{song_position}";
+      my $title = t('Play song at position [_1]', $event->{song_position});
       my $html = $show_link
                    ? a({ -href => $link }, $title)
                    : $title;
@@ -1752,7 +1752,6 @@ package Praati::View {
                   order by rating_count desc, user_name; },
              $listening_session->{listening_session_id});
 
-
     table(
       Tr([ th([ t('user'), t('rating count') ]),
            map { td($_) } @$user_rating_counts]));
@@ -1814,7 +1813,7 @@ package Praati::View {
     my $user = one_record(q{ select * from users where user_id = ?; },
                           $user_id);
     $user
-      ? t(q{Logged in as "[_1]" ([_2])},
+      ? t('Logged in as "[_1]" ([_2])',
           e($user->{user_name}),
           e($user->{user_role}))
       : '';
@@ -1943,21 +1942,28 @@ package Praati::View::L10N::fi {
     'Available panels'      => 'Valittavissa olevat raadit',
     'Available panels are:' => 'Valittavissa olevat raadit ovat:',
 
+    'This panel is "[_1]".' => 'Tämä raati on "[_1]".',
+
     'User email address is not valid.' => 'Sähköpostiosoite ei ole kelvollinen.',
     'Email address is already reserved.' => 'Sähköpostiosoite on jo varattu.',
     'Username is already reserved.'      => 'Käyttäjänimi on jo varattu.',
 
     'Wrong username or password.' => 'Väärä käyttäjänimi tai salasana.',
 
+    'Rate songs for "[_1]"' => 'Arvostele laulut raadissa "[_1]"',
+
     'Play songs from worst to best'
       => 'Soita laulut huonoimmasta parhaimpaan.',
     'Play to the worst, then to the best from position:'
       => 'Soita huonoimpaan, sitten parhaimpaan sijoituksesta:',
 
+
     'New listening session'   => 'Uusi kuuntelusessio',
     'Listening session name:' => 'Kuuntelusession nimi:',
     'Select session type:'    => 'Valitse session tyyppi:',
     'Create'                  => 'Luo',
+
+    'Play song at position [_1]' => 'Soita laulu, jolla on sijoitus [_1]',
 
     'Song rating statistics'   => 'Laulun arvostelujen tilastotietoa',
     'Ratings for song'         => 'Laulun arvostelut',
@@ -1988,12 +1994,18 @@ package Praati::View::L10N::fi {
     'Session type is missing.'           => 'Kuuntelusession tyyppi puuttuu.',
     'Song position is not valid' => 'Laulun sijoitus ei ole kelvollinen.',
 
+    'Create a new listening session for panel "[_1]":'
+      => 'Luo uusi kuuntelusessio raadille "[_1]":',
+
+    'Listening session overview for "[_1]".'
+       => 'Kuuntelusession yleiskatsaus sessiolle "[_1]".',
+
     'Password is missing.'    => 'Salasana puuttuu.',
     'Passwords do not match.' => 'Salasanat eivät täsmää.',
 
     'username'          => 'käyttäjänimi',
     'rating'            => 'arvostelu',
-    'normalized rating' => 'normalisoitue arvostelu',
+    'normalized rating' => 'normalisoitu arvostelu',
     'comment'           => 'kommentti',
 
     'previous' => 'edellinen',
