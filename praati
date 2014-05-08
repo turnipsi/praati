@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.115 2014/05/08 19:03:16 je Exp $
+# $Id: praati,v 1.116 2014/05/08 19:14:15 je Exp $
 
 =pod
 
@@ -166,20 +166,13 @@ package Praati::Model {
   sub rows;
 }
 
-package Praati::View {
-  use Exporter qw(import);
-  our @EXPORT = qw(t);
-
-  sub t;
-}
-
 #
 # model
 #
 
 package Praati::Model {
   Praati::Controller->import;
-  Praati::View->import;
+  Praati::View::L10N->import;
 
   use CGI::Carp;
   use Crypt::SaltedHash;
@@ -1144,6 +1137,7 @@ package Praati::Model::SQLite::StandardDeviation {
 package Praati::View {
   Praati::Controller->import;
   Praati::Model->import;
+  Praati::View::L10N->import;
 
   use CGI::Carp;
   use List::MoreUtils qw(uniq);
@@ -1183,16 +1177,11 @@ package Praati::View {
     }
   }
 
-  sub init {
-    $Lh = Praati::View::L10N->get_handle('fi')
-      or confess('Could not get a localization handle');
-  }
+  sub init { Praati::View::L10N::init_praati_l10n(); }
 
   sub concat { join('' => @_); }
 
   sub e { escapeHTML(@_); }
-
-  sub t { $Lh->maketext(@_); }
 
   sub link_if_not_this_page {
     my ($target) = @_;

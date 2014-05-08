@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.20 2014/05/02 19:08:43 je Exp $
+# $Id: test,v 1.21 2014/05/08 19:14:15 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -14,6 +14,12 @@ use HTML::TableContentParser;
 use Test::More tests => 16;
 use Test::WWW::Mechanize;
 
+use lib '.';
+use Praati::View::L10N;
+
+# XXX this should be initialized differently for every user
+# XXX (with different languages preferences)
+Praati::View::L10N::init_praati_l10n();
 
 package Praati::User {
   use Class::Struct __PACKAGE__, {

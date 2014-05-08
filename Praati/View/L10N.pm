@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: utf-8; -*-
-# $Id: L10N.pm,v 1.1 2014/05/08 19:03:17 je Exp $
+# $Id: L10N.pm,v 1.2 2014/05/08 19:14:16 je Exp $
 
 use strict;
 
@@ -10,10 +10,24 @@ use strict;
 
 use warnings FATAL => qw(all);
 
+use CGI;
 use Locale::Maketext;
 
 package Praati::View::L10N {
   use base qw(Locale::Maketext);
+
+  use Exporter qw(import);
+  our @EXPORT = qw(t);
+
+  our $Lh;
+
+  sub init_praati_l10n {
+    # XXX other languages that Finnish should be supported as well
+    $Lh = Praati::View::L10N->get_handle('fi')
+      or confess('Could not get a localization handle');
+  }
+
+  sub t { $Lh->maketext(@_); }
 }
 
 package Praati::View::L10N::fi {
