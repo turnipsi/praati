@@ -1,11 +1,10 @@
 #!/usr/bin/perl -T
-# -*- mode: perl; coding: utf-8; -*-
-# $Id: test,v 1.21 2014/05/08 19:14:15 je Exp $
+# -*- mode: perl; coding: iso-8859-1 -*-
+# $Id: test,v 1.22 2014/05/09 18:38:15 je Exp $
 
 use autodie;
 # use diagnostics;
 use strict;
-use utf8;
 use warnings FATAL => qw(all);
 
 use CGI;
@@ -32,6 +31,8 @@ package Praati::User {
 
   use Test::Deep;
   use Test::More;
+
+  Praati::View::L10N->import;
 
   sub check_listening_session_rating_counts {
     my ($self, $rating_counts) = @_;
@@ -87,7 +88,7 @@ package Praati::User {
       $self->browser->base_like(
         qr{listening_sessions/overview\?listening_session_id=\d+$});
       $self->browser->text_contains(
-        qq{Listening session overview for "$ls_name".});
+        t('Listening session overview for "[_1]".', $ls_name));
     });
   }
 
@@ -125,7 +126,7 @@ package Praati::User {
       plan(tests => 4);
 
       $self->main_page_ok()
-        and $self->browser->follow_link_ok({ text => 'Panels' })
+        and $self->browser->follow_link_ok({ text => t('Panels') })
         or return;
 
       my $ls_create_link
@@ -136,7 +137,7 @@ package Praati::User {
 
       $self->browser->follow_link_ok({ url => $ls_create_link });
       $self->browser->text_contains(
-        qq{Create a new listening session for panel "$panel_name":});
+        t('Create a new listening session for panel "[_1]":', $panel_name));
     });
   }
 
@@ -149,7 +150,7 @@ package Praati::User {
       plan(tests => 5);
 
       $self->main_page_ok()
-        and $self->browser->follow_link_ok({ text => 'Login' })
+        and $self->browser->follow_link_ok({ text => t('Login') })
         or return;
 
       my $formfields = {
@@ -162,7 +163,7 @@ package Praati::User {
                                      'Send login form')
         and $self->browser->base_like(qr{main$})
         and $self->browser->text_contains(
-              qq{Logged in as "$user_name" ($user_type)});
+              t('Logged in as "[_1]" ([_2])', $user_name, $user_type));
     });
   }
 
@@ -174,12 +175,12 @@ package Praati::User {
       plan(tests => 5);
 
       $self->main_page_ok()
-        and $self->browser->follow_link_ok({ text => 'Logout' })
-        and $self->browser->text_contains('You are now logged out.')
+        and $self->browser->follow_link_ok({ text => t('Logout') })
+        and $self->browser->text_contains( t('You are now logged out.') )
         and ($self->browser->get($self->site . '/panels')
                and ok($self->browser->status() == 403,
                       'Returned status code 403 for an unauthorized page'))
-        and $self->browser->text_contains('Access unauthorized.');
+        and $self->browser->text_contains( t('Access unauthorized.') );
     });
   }
 
@@ -224,7 +225,8 @@ package Praati::User {
   sub new_user {
     my ($class, $site, $email, $name, $password) = @_;
 
-    my $self = $class->new(browser  => Test::WWW::Mechanize->new(autolint => 1),
+    # XXX autolint not working for me (with latin1-characters (or utf8))
+    my $self = $class->new(browser  => Test::WWW::Mechanize->new(autolint => 0),
                            email    => $email,
                            name     => $name,
                            password => $password,
@@ -248,7 +250,7 @@ package Praati::User {
       plan(tests => (4 + $song_ratings_count));
 
       $self->main_page_ok()
-        and $self->browser->follow_link_ok({ text => 'Panels' })
+        and $self->browser->follow_link_ok({ text => t('Panels') })
         and $self->browser->follow_link_ok({ text => $panel_name })
         or return;
 
@@ -278,8 +280,8 @@ package Praati::User {
       plan(tests => 5);
 
       $self->main_page_ok()
-        and $self->browser->text_contains('The main page.')
-        and $self->browser->follow_link_ok({ text => 'New user' })
+        and $self->browser->text_contains( t('The main page.') )
+        and $self->browser->follow_link_ok({ text => t('New user') })
         or return;
 
       my $formfields = {

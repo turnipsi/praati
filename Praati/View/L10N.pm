@@ -1,13 +1,7 @@
-# -*- mode: perl; coding: utf-8; -*-
-# $Id: L10N.pm,v 1.2 2014/05/08 19:14:16 je Exp $
+# -*- mode: perl; coding: iso-8859-1; -*-
+# $Id: L10N.pm,v 1.3 2014/05/09 18:38:16 je Exp $
 
 use strict;
-
-# XXX Problems with Locale::Maketext with this!
-# XXX (with Finnish locale, with _1 and \d+ regular expression test)
-# XXX Perhaps related to OpenBSD chroot?
-# use utf8;
-
 use warnings FATAL => qw(all);
 
 use CGI;
@@ -34,46 +28,46 @@ package Praati::View::L10N::fi {
   use base qw(Praati::View::L10N);
 
   our %Lexicon = (
-    'Access unauthorized.' => 'PÃ¤Ã¤sy kielletty.',
-    'Unauthorized access'  => 'PÃ¤Ã¤sy kielletty',
-    'No such page'         => 'EtsimÃ¤Ã¤si sivua ei lÃ¶ydy',
-    'No such page.'        => 'EtsimÃ¤Ã¤si sivua ei lÃ¶ydy.',
+    'Access unauthorized.' => 'Pääsy kielletty.',
+    'Unauthorized access'  => 'Pääsy kielletty',
+    'No such page'         => 'Etsimääsi sivua ei löydy',
+    'No such page.'        => 'Etsimääsi sivua ei löydy.',
 
-    'Login'    => 'Kirjaudu sisÃ¤Ã¤n',
+    'Login'    => 'Kirjaudu sisään',
     'Logout'   => 'Kirjaudu ulos',
-    'Main'     => 'PÃ¤Ã¤sivu',
-    'New user' => 'Uusi kÃ¤yttÃ¤jÃ¤',
+    'Main'     => 'Pääsivu',
+    'New user' => 'Uusi käyttäjä',
     'Panels'   => 'Raadit',
 
-    'The main page.' => 'PÃ¤Ã¤sivu.',
+    'The main page.' => 'Pääsivu.',
 
-    'Not logged in'           => 'Ei sisÃ¤Ã¤nkirjautuneena',
-    'You are not logged in.'  => 'Et ole sisÃ¤Ã¤nkirjautuneena.',
+    'Not logged in'           => 'Ei sisäänkirjautuneena',
+    'You are not logged in.'  => 'Et ole sisäänkirjautuneena.',
     'Logged out'              => 'Kirjauduttu ulos',
     'You are now logged out.' => 'Olet nyt kirjautunut ulos.',
     'Logout error'            => 'Uloskirjautumisvirhe',
     'Could not log out for some reason.'
-       => 'Uloskirjautuminen ei onnistunut jostain syystÃ¤.',
+       => 'Uloskirjautuminen ei onnistunut jostain syystä.',
 
     'Logged in as "[_1]" ([_2])'
-       => 'Olet kirjautuneena kÃ¤yttÃ¤jÃ¤nÃ¤ [_1] ([_2])',
+       => 'Olet kirjautuneena käyttäjänä [_1] ([_2])',
 
-    'email address:'  => 'sÃ¤hkÃ¶postiosoite:',
+    'email address:'  => 'sähköpostiosoite:',
     'name:'           => 'nimi:',
     'password:'       => 'salasana:',
     'password again:' => 'salasana uudestaan:',
-    'Create new user' => 'Luo uusi kÃ¤yttÃ¤jÃ¤',
+    'Create new user' => 'Luo uusi käyttäjä',
 
     'Available panels'      => 'Valittavissa olevat raadit',
     'Available panels are:' => 'Valittavissa olevat raadit ovat:',
 
-    'This panel is "[_1]".' => 'TÃ¤mÃ¤ raati on "[_1]".',
+    'This panel is "[_1]".' => 'Tämä raati on "[_1]".',
 
-    'User email address is not valid.' => 'SÃ¤hkÃ¶postiosoite ei ole kelvollinen.',
-    'Email address is already reserved.' => 'SÃ¤hkÃ¶postiosoite on jo varattu.',
-    'Username is already reserved.'      => 'KÃ¤yttÃ¤jÃ¤nimi on jo varattu.',
+    'User email address is not valid.' => 'Sähköpostiosoite ei ole kelvollinen.',
+    'Email address is already reserved.' => 'Sähköpostiosoite on jo varattu.',
+    'Username is already reserved.'      => 'Käyttäjänimi on jo varattu.',
 
-    'Wrong username or password.' => 'VÃ¤Ã¤rÃ¤ kÃ¤yttÃ¤jÃ¤nimi tai salasana.',
+    'Wrong username or password.' => 'Väärä käyttäjänimi tai salasana.',
 
     'Rate songs for "[_1]"' => 'Arvostele laulut raadissa "[_1]"',
 
@@ -92,11 +86,11 @@ package Praati::View::L10N::fi {
 
     'Song rating statistics'   => 'Laulun arvostelujen tilastotietoa',
     'Ratings for song'         => 'Laulun arvostelut',
-    'User rating correlations' => 'KÃ¤yttÃ¤jien arvostelujen korrelaatiot',
+    'User rating correlations' => 'Käyttäjien arvostelujen korrelaatiot',
 
     'Listening event for [_1]' => 'Kuuntelusessio laululle [_1]',
 
-    'User rating counts' => 'KÃ¤yttÃ¤jien arvostelujen lukumÃ¤Ã¤rÃ¤',
+    'User rating counts' => 'Käyttäjien arvostelujen lukumäärä',
     'Playback events'    => 'Soittotapahtumat',
 
     'play' => 'soita',
@@ -106,14 +100,14 @@ package Praati::View::L10N::fi {
     'normalized rating standard deviation'
        => 'normalisoitujen arvostelujen keskihajonta',
     'rating standard deviation' => 'arvostelujen keskihajonta',
-    'user'                      => 'kÃ¤yttÃ¤jÃ¤',
-    'rating count'              => 'arvostelujen lukumÃ¤Ã¤rÃ¤',
+    'user'                      => 'käyttäjä',
+    'rating count'              => 'arvostelujen lukumäärä',
 
     'create a new listening session' => 'luo uusi kuuntelusessio',
     'rate'                           => 'arvostele',
 
     'To login, cookies must be accepted by the browser.'
-      => 'Kirjautuaksesi "keksien" tÃ¤ytyy olla selaimessasi hyvÃ¤ksyttyjÃ¤.',
+      => 'Kirjautuaksesi "keksien" täytyy olla selaimessasi hyväksyttyjä.',
 
     'Listening session name is missing.' => 'Kuuntelusession nimi puuttuu.',
     'Session type is missing.'           => 'Kuuntelusession tyyppi puuttuu.',
@@ -126,9 +120,9 @@ package Praati::View::L10N::fi {
        => 'Kuuntelusession yleiskatsaus sessiolle "[_1]".',
 
     'Password is missing.'    => 'Salasana puuttuu.',
-    'Passwords do not match.' => 'Salasanat eivÃ¤t tÃ¤smÃ¤Ã¤.',
+    'Passwords do not match.' => 'Salasanat eivät täsmää.',
 
-    'username'          => 'kÃ¤yttÃ¤jÃ¤nimi',
+    'username'          => 'käyttäjänimi',
     'rating'            => 'arvostelu',
     'normalized rating' => 'normalisoitu arvostelu',
     'comment'           => 'kommentti',

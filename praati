@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
-# -*- mode: perl; coding: utf-8; -*-
-# $Id: praati,v 1.116 2014/05/08 19:14:15 je Exp $
+# -*- mode: perl; coding: iso-8859-1; -*-
+# $Id: praati,v 1.117 2014/05/09 18:38:15 je Exp $
 
 =pod
 
@@ -18,7 +18,6 @@ A sample Apache configuration:
                diagnostics             \
                overload                \
                strict                  \
-               utf8                    \
                warnings                \
                BSD::arc4random         \
                CGI::Carp               \
@@ -57,7 +56,6 @@ A sample Apache configuration:
 use autodie;
 # use diagnostics;
 use strict;
-use utf8;
 use warnings FATAL => qw(all);
 
 use Praati::View::L10N;
@@ -1241,8 +1239,7 @@ package Praati::View {
 
     my @start_html_opts = (
                             $opts{-start_html} ? @{ $opts{-start_html} } : (),
-                            -encoding => 'UTF-8',
-                            -title    => "Praati - $title",
+                            -title => "Praati - $title",
                           );
 
     start_html(@start_html_opts)
@@ -1936,7 +1933,7 @@ package Praati::Controller {
     my $err = $@;
     if ($err) {
       my $q = CGI->new;
-      print $q->header(-charset => 'UTF-8'),
+      print $q->header(),
             $q->pre($err);
     }
   }
@@ -2354,7 +2351,7 @@ package Praati::Controller::Response {
       defined($self->type  ) ? (-type   => $self->type  ) : (),
     );
 
-    $q->header(-charset => 'UTF-8', @header_args)
+    $q->header(@header_args)
     . $self->page;
   }
 
