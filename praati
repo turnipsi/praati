@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: praati,v 1.118 2014/05/10 19:38:22 je Exp $
+# $Id: praati,v 1.119 2014/05/11 19:04:29 je Exp $
 
 =pod
 
@@ -9,20 +9,32 @@ A sample Apache configuration:
   PerlModule Apache::PerlRun
   PerlTaintCheck On
 
+  <IfDefine PRAATI_DEBUG>
+    PerlModule CGI::Pretty
+  </IfDefine>
+
+  <IfDefine PRAATI_NYTPROF>
+    MaxClients 1
+    MaxRequestsPerChild 0
+    PerlPassEnv NYTPROF
+    PerlModule Devel::NYTProf::Apache
+  </IfDefine>
+
   # XXX why does not Files or Location work?
   <Directory /users/*/praati>
     Options +ExecCGI
     PerlHandler Apache::PerlRun
     PerlModule autodie                 \
+               autodie::hints          \
                constant                \
                diagnostics             \
                overload                \
                strict                  \
                warnings                \
                BSD::arc4random         \
+               CGI                     \
                CGI::Carp               \
                CGI::Cookie             \
-               CGI::Pretty             \
                Class::Struct           \
                Crypt::SaltedHash       \
                Data::Dumper            \
@@ -46,9 +58,6 @@ A sample Apache configuration:
                Statistics::Descriptive \
                Tie::Hash::NamedCapture \
                URI::Escape
-
-    # for profiling
-    PerlModule Devel::NYTProf::Apache
 
     PerlSendHeader On
     SetHandler perl-script

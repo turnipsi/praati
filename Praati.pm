@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.1 2014/05/10 19:39:01 je Exp $
+# $Id: Praati.pm,v 1.2 2014/05/11 19:04:29 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -1833,12 +1833,13 @@ package Praati::Controller {
   Praati::Model->import;
 
   use BSD::arc4random qw(arc4random_bytes);
+  use CGI qw(-any);
   use CGI::Carp;
-  use CGI::Pretty qw(-any);
   use List::MoreUtils qw(any);
   use Scalar::Util qw(blessed);
 
-  $CGI::Pretty::INDENT = ' ' x 2;
+  # XXX should be set where CGI::Pretty is included
+  # $CGI::Pretty::INDENT = ' ' x 2;
 
   our ($Q, $Session_user);
 
