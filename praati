@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: praati,v 1.120 2014/05/13 10:16:36 je Exp $
+# $Id: praati,v 1.121 2014/05/13 12:00:30 je Exp $
 
 =pod
 
@@ -17,9 +17,9 @@ A sample Apache configuration:
   <IfDefine PRAATI_NYTPROF>
     MaxClients 1
     MaxRequestsPerChild 0
+    PerlSetEnv NYTPROF "slowops=0"
     PerlSetEnv PRAATI_NYTPROF 1
-    PerlPassEnv NYTPROF
-    PerlModule Devel::NYTProf::Apache
+    PerlSetEnv PERL5OPT -d:NYTProf
   </IfDefine>
 
   # XXX why does not Files or Location work?
@@ -75,5 +75,15 @@ use warnings FATAL => qw(all);
 use Praati;
 
 package main {
+  if ($ENV{PRAATI_NYTPROF}) {
+    my $time = time();
+    DB::enable_profile("/tmp/praati-nytprof.out.$$.$time");
+  }
+
   Praati::Controller::main();
+
+  if ($ENV{PRAATI_NYTPROF}) {
+    DB::disable_profile();
+    DB::finish_profile();
+  }
 }
