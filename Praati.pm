@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.2 2014/05/11 19:04:29 je Exp $
+# $Id: Praati.pm,v 1.3 2014/05/13 10:16:36 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -1838,15 +1838,14 @@ package Praati::Controller {
   use List::MoreUtils qw(any);
   use Scalar::Util qw(blessed);
 
-  # XXX should be set where CGI::Pretty is included
-  # $CGI::Pretty::INDENT = ' ' x 2;
+  if ($ENV{PRAATI_DEBUG}) {
+    $CGI::Pretty::INDENT = ' ' x 2;
+  }
 
   our ($Q, $Session_user);
 
-  our $Debugging = 1;
-
   sub main {
-    $Debugging
+    $ENV{PRAATI_DEBUG}
       ? debugging_wrapper(\&handle_query)
       : handle_query();
   }
