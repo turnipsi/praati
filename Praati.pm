@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.3 2014/05/13 10:16:36 je Exp $
+# $Id: Praati.pm,v 1.4 2014/05/14 19:41:00 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -1832,7 +1832,7 @@ package Praati::View {
 package Praati::Controller {
   Praati::Model->import;
 
-  use BSD::arc4random qw(arc4random_bytes);
+  # use BSD::arc4random qw(arc4random_bytes);
   use CGI qw(-any);
   use CGI::Carp;
   use List::MoreUtils qw(any);
@@ -2104,7 +2104,7 @@ package Praati::Controller {
       }
     }
 
-    my $new_user_session_key = unpack('h*', arc4random_bytes(20));
+    my $new_user_session_key = unpack('h*', 'gregre');  # XXX arc4random_bytes(20));
 
     my $expire_hours = "+${Praati::Config::User_session_hours}h";
     my $cookie = $Q->cookie(-expires => $expire_hours,
