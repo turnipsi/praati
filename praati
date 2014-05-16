@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: praati,v 1.122 2014/05/14 19:41:00 je Exp $
+# $Id: praati,v 1.123 2014/05/16 18:21:45 je Exp $
 
 =pod
 
@@ -10,8 +10,8 @@ A sample Apache configuration:
   PerlTaintCheck On
 
   <IfDefine PRAATI_DEBUG>
-    PerlSetEnv PRAATI_DEBUG 1
     PerlModule CGI::Pretty
+    PerlSetEnv PRAATI_DEBUG 1
   </IfDefine>
 
   <IfDefine PRAATI_NYTPROF>
