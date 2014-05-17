@@ -1,10 +1,8 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: apache_startup.pl,v 1.3 2014/05/17 19:01:37 je Exp $
+# $Id: apache_startup.pl,v 1.4 2014/05/17 19:46:26 je Exp $
 
 # this code will run as root!
 
-use autodie                 ();
-use autodie::hints          ();
 use constant                ();
 use diagnostics             ();
 use overload                ();

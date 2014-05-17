@@ -1,7 +1,6 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.6 2014/05/17 06:12:17 je Exp $
+# $Id: Praati.pm,v 1.7 2014/05/17 19:46:26 je Exp $
 
-use autodie;
 # use diagnostics;
 use strict;
 use warnings FATAL => qw(all);
@@ -1794,8 +1793,10 @@ package Praati::View {
     my $filepath = $song->{song_filepath};
     open(my $mp3file, '<', $filepath)
       or confess("Could not open $filepath for reading: $!");
-    my $mp3data = do { local $/; <$mp3file> };
-    close($mp3file);
+    my $mp3data = do { local $/; <$mp3file>; }
+      or confess("Could not read the mp3 file at $filepath: $!");
+    close($mp3file)
+      or warn("Could not close $mp3file");
 
     response(page => $mp3data,
              type => 'audio/mpeg');

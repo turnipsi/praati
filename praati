@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: praati,v 1.124 2014/05/17 18:41:28 je Exp $
+# $Id: praati,v 1.125 2014/05/17 19:46:26 je Exp $
 
 =pod
 
@@ -34,7 +34,6 @@ A sample Apache configuration:
 
 =cut
 
-use autodie;
 # use diagnostics;
 use strict;
 use warnings FATAL => qw(all);
