@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: apache_startup.pl,v 1.4 2014/05/17 19:46:26 je Exp $
+# $Id: apache_startup.pl,v 1.5 2014/05/17 19:47:33 je Exp $
 
 # this code will run as root!
 
@@ -61,6 +61,6 @@ my @cgi_methods = qw(a
                      Tr
                      ul);
 
-CGI->compile(':all', @cgi_methods);
+CGI->compile(@cgi_methods);
 
 1;
