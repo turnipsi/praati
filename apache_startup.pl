@@ -1,4 +1,5 @@
-#!/usr/bin/perl
+# -*- mode: perl; coding: iso-8859-1; -*-
+# $Id: apache_startup.pl,v 1.3 2014/05/17 19:01:37 je Exp $
 
 # this code will run as root!
 
