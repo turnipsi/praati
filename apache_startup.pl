@@ -37,4 +37,31 @@ use Statistics::Descriptive ();
 use Tie::Hash::NamedCapture ();
 use URI::Escape             ();
 
+# XXX this list now lives in two places
+my @cgi_methods = qw(a
+                     div
+                     embed
+                     end_html
+                     escapeHTML
+                     form
+                     h1
+                     h2
+                     li
+                     meta
+                     p
+                     path_info
+                     password_field
+                     popup_menu
+                     radio_group
+                     start_html
+                     submit
+                     table
+                     td
+                     textfield
+                     th
+                     Tr
+                     ul);
+
+CGI->compile(':all', @cgi_methods);
+
 1;
