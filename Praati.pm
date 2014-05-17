@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.5 2014/05/16 18:21:45 je Exp $
+# $Id: Praati.pm,v 1.6 2014/05/17 06:12:17 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -1832,7 +1832,7 @@ package Praati::View {
 package Praati::Controller {
   Praati::Model->import;
 
-  # use BSD::arc4random qw(arc4random_bytes);
+  use BSD::arc4random qw(arc4random_bytes);
   use CGI qw(-any);
   use CGI::Carp;
   use List::MoreUtils qw(any);
