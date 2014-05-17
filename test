@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1 -*-
-# $Id: test,v 1.22 2014/05/09 18:38:15 je Exp $
+# $Id: test,v 1.23 2014/05/17 19:59:25 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -260,10 +260,10 @@ package Praati::User {
 
       while (my ($song_name, $rating_value) = each %$song_ratings) {
         my $rating_id = $rating_ids->{ CGI::escapeHTML($song_name) };
-        ok(defined($rating_id), "Found rating id for song '$song_name'");
 
-        $self->browser->select("songs[$rating_id].rating_value",
-                               $rating_value);
+        ok(defined($rating_id), "Found rating id for song '$song_name'")
+          and $self->browser->select("songs[$rating_id].rating_value",
+                                     $rating_value);
       }
 
       $self->browser->submit_form_ok({ button => 'send_ratings', },
