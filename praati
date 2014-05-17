@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: praati,v 1.123 2014/05/16 18:21:45 je Exp $
+# $Id: praati,v 1.124 2014/05/17 18:41:28 je Exp $
 
 =pod
 
@@ -20,45 +20,14 @@ A sample Apache configuration:
     PerlModule Devel::NYTProf::Apache
   </IfDefine>
 
+  # XXX Preload modules in a separate init script.
+  # XXX Hardcoded path, and this code will run as root!
+  PerlRequire /var/www/users/je/praati/apache_startup.pl
+
   # XXX why does not Files or Location work?
   <Directory /users/*/praati>
     Options +ExecCGI
     PerlHandler Apache::PerlRun
-    PerlModule autodie                 \
-               autodie::hints          \
-               constant                \
-               diagnostics             \
-               overload                \
-               strict                  \
-               warnings                \
-               BSD::arc4random         \
-               CGI                     \
-               CGI::Carp               \
-               CGI::Cookie             \
-               Class::Struct           \
-               Crypt::SaltedHash       \
-               Data::Dumper            \
-               DBD::SQLite             \
-               DBI                     \
-               Digest::SHA             \
-               Email::Valid            \
-               Encode                  \
-               Encode::Unicode         \
-               Exporter                \
-               File::Basename          \
-               File::Find              \
-               File::Glob              \
-               List::MoreUtils         \
-               List::Util              \
-               Locale::Maketext        \
-               Math::Trig              \
-               MP3::Tag                \
-               POSIX                   \
-               Scalar::Util            \
-               Statistics::Descriptive \
-               Tie::Hash::NamedCapture \
-               URI::Escape
-
     PerlSendHeader On
     SetHandler perl-script
   </Directory>
