@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.8 2014/05/18 09:34:05 je Exp $
+# $Id: Praati.pm,v 1.9 2014/05/18 19:01:12 je Exp $
 
 # use diagnostics;
 use strict;
@@ -130,21 +130,11 @@ package Praati::Model {
   our $Db;
 
   sub init {
-    my %attrs = (
-      AutoCommit                       => 1,
-      PrintError                       => 0,
-      RaiseError                       => 1,
-      sqlite_allow_multiple_statements => 1,
-    );
-    $Db = DBI->connect("dbi:SQLite:dbname=${Praati::Config::DB_file_path}",
-		       '',
-		       '',
-		       \%attrs);
-    $Db->do('PRAGMA foreign_keys = ON');
+    setup_database(${Praati::Config::DB_file_path})
+      unless -e ${Praati::Config::DB_file_path};
 
-    Praati::Model::SQLite::register_sqlite_functions();
+    open_db_connection(${Praati::Config::DB_file_path});
 
-    create_db_tables();
     init_db_tables();
     debug_query();
     expire_old_user_sessions();
@@ -152,7 +142,40 @@ package Praati::Model {
     return;
   }
 
-  sub close {
+  sub setup_database {
+    my ($db_file_path) = @_;
+
+    my $tmpfile = "${db_file_path}.tmp";
+
+    unlink($tmpfile);
+
+    open_db_connection($tmpfile);
+    create_db_tables();
+    close_db_connection();
+
+    rename($tmpfile, $db_file_path)
+      or confess("Could not rename a database file to a new path: $!");
+  }
+
+  sub open_db_connection {
+    my ($db_file_path) = @_;
+
+    my %attrs = (
+      AutoCommit                       => 1,
+      PrintError                       => 0,
+      RaiseError                       => 1,
+      sqlite_allow_multiple_statements => 1,
+    );
+    $Db = DBI->connect("dbi:SQLite:dbname=$db_file_path",
+                       '',
+                       '',
+                       \%attrs);
+    $Db->do('PRAGMA foreign_keys = ON');
+
+    Praati::Model::SQLite::register_sqlite_functions();
+  }
+
+  sub close_db_connection {
     if ($Db) { $Db->disconnect; }
   }
 
@@ -982,7 +1005,7 @@ package Praati::Model::Musicscan {
 
 package Praati::Model::SQLite {
   sub register_sqlite_functions {
-    my $db = $Praati::Model::Db;
+    my $db = ${Praati::Model::Db};
 
     $db->sqlite_create_function('check_user_email',
                                 1,
@@ -1867,7 +1890,7 @@ package Praati::Controller {
     };
     my $error = $@;
 
-    Praati::Model::close();
+    Praati::Model::close_db_connection();
 
     if ($error) {
       confess($error);
