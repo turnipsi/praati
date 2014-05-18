@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.7 2014/05/17 19:46:26 je Exp $
+# $Id: Praati.pm,v 1.8 2014/05/18 09:34:05 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1493,13 +1493,14 @@ package Praati::View {
   sub table_album_ratings_by_user {
     my ($album, $panel_id, $user_id) = @_;
 
-    my $songs = records(q{ select * from songinfos
-                             left outer join song_ratings_with_normalized_values
-                               using (panel_id, song_id)
-                           where album_id = ?
-                             and panel_id = ?
-                             and (user_id = ? or user_id is null)
-                           order by track_number; },
+    my $songs = records(q{select * from songinfos
+                            cross join users
+                            left outer join song_ratings_with_normalized_values
+                              using (panel_id, song_id, user_id)
+                            where album_id = ?
+                              and panel_id = ?
+                              and  user_id = ?
+                            order by track_number; },
                         $album->{album_id},
                         $panel_id,
                         $user_id);
