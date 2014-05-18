@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.9 2014/05/18 19:01:12 je Exp $
+# $Id: Praati.pm,v 1.10 2014/05/18 19:06:54 je Exp $
 
 # use diagnostics;
 use strict;
@@ -130,8 +130,7 @@ package Praati::Model {
   our $Db;
 
   sub init {
-    setup_database(${Praati::Config::DB_file_path})
-      unless -e ${Praati::Config::DB_file_path};
+    setup_database(${Praati::Config::DB_file_path});
 
     open_db_connection(${Praati::Config::DB_file_path});
 
@@ -144,6 +143,16 @@ package Praati::Model {
 
   sub setup_database {
     my ($db_file_path) = @_;
+
+    # perhaps this should not be done from the application itself...
+
+    # if $db_file_path exists we presume everything is cool
+    # and proceed no further
+    return 1 if -e $db_file_path;
+
+    # this will setup new database from scratch
+    # (would destroy the old if it somehow could exist)
+    # (of course it can, it is a classic race condition))
 
     my $tmpfile = "${db_file_path}.tmp";
 
