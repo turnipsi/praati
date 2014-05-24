@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.10 2014/05/18 19:06:54 je Exp $
+# $Id: Praati.pm,v 1.11 2014/05/24 12:39:24 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1134,11 +1134,12 @@ package Praati::View {
                            h2
                            li
                            meta
+                           option
                            p
                            path_info
                            password_field
-                           popup_menu
                            radio_group
+                           Select
                            start_html
                            submit
                            table
@@ -1841,9 +1842,13 @@ package Praati::View {
                  ? sprintf('%.1f', $song_rating_value_value)
                  : Praati::Constants::NO_SONG_RATING_MARKER;
 
-    popup_menu($rating_form_id,
-               [ song_rating_values() ],
-               $value);
+    Select({ name => $rating_form_id },
+           map {
+             sprintf('<option%s value="%s">%s</option>',
+                     (($value eq $_) ? q{ selected="selected"} : ''),
+                     $_,
+                     $_)
+           } song_rating_values());
   }
 
   sub song_rating_values {
