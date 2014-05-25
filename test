@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1 -*-
-# $Id: test,v 1.24 2014/05/25 19:42:44 je Exp $
+# $Id: test,v 1.25 2014/05/25 19:48:58 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -10,7 +10,7 @@ use warnings FATAL => qw(all);
 use CGI;
 use HTML::SimpleParse;
 use HTML::TableContentParser;
-use Test::More tests => 32;
+use Test::More tests => 36;
 use Test::WWW::Mechanize;
 
 use lib '.';
@@ -508,6 +508,42 @@ $critic7
                             })
   and $critic7->logout();
 
+my $critic8 = Praati::User->new_user($site,
+                                    'critic8@example.org',
+                                    'Critic Eight',
+                                    'trergrewtpavxwk');
+
+# critic Eight is normal, but forgot one song
+
+$critic8
+  and $critic8->login('critic')
+  and $critic8->rate_songs($panel_name,
+                           {
+                             q{Personal Jesus}                    => '8.5',
+                             q{Just Can't Get Enough}             => '5.0',
+                             q{Everything Counts}                 => '3.0',
+                             q{Enjoy The Silence}                 => '7.0',
+                             q{Shake The Disease}                 => '9.5',
+                             q{See You}                           => '2.0',
+                             q{It's No Good}                      => '6.5',
+                             q{Strangelove}                       => '5.5',
+                             q{Suffer Well}                       => '4.5',
+                             q{Dream On}                          => '7.5',
+                             q{People Are People}                 => '5.0',
+                             q{Martyr}                            => '4.5',
+                             q{Walking In My Shoes}               => '7.5',
+                             q{Precious}                          => '7.0',
+                             q{Master And Servant}                => '0.5',
+                             q{New Life}                          => '2.5',
+                             q{Never Let Me Down Again}           => '9.5',
+                             q{Wrong}                             => '1.5',
+                             q{Peace}                             => '3.5',
+                             q{Personal Jesus (The Stargate Mix)} => '9.5',
+                             q{Heaven}                            => '8.5',
+                             q{Soothe My Soul}                    => '3.0',
+                            })
+  and $critic8->logout();
+
 $admin1
   and $admin1->login('admin')
   and $admin1->create_new_listening_session($panel_name,
@@ -520,5 +556,6 @@ $admin1
         [ 'Critic Seven' => 23, ],
         [ 'Critic Three' => 23, ],
         [ 'Critic Two'   => 23, ],
+        [ 'Critic Eight' => 22, ],
         [ 'Critic Six'   =>  9, ],
       ]);
