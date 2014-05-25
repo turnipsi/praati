@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.12 2014/05/25 06:42:36 je Exp $
+# $Id: Praati.pm,v 1.13 2014/05/25 06:43:59 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1640,8 +1640,8 @@ package Praati::View {
          e($song_with_rating->{song_name}),
          $song_playback_link,
          $rating_choice,
-         div({ -style => ("background-color: $color_for_normalized_value;"
-                          . "padding: 0.3em;") },
+         div({ -style => "background-color: $color_for_normalized_value; "
+                         . "padding: 0.3em;" },
              $normalized_value_string),
          $comment,
          submit(send_ratings => 'Send') ]);
