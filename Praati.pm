@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.11 2014/05/24 12:39:24 je Exp $
+# $Id: Praati.pm,v 1.12 2014/05/25 06:42:36 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1527,6 +1527,7 @@ package Praati::View {
     my ($album, $panel_id, $user_id) = @_;
 
     my $songs = records(q{select * from songinfos
+
                             cross join users
                             left outer join song_ratings_with_normalized_values
                               using (panel_id, song_id, user_id)
@@ -1635,14 +1636,15 @@ package Praati::View {
       = a({ -href => link_to_song_playback($song_with_rating->{song_id}) },
           t('play'));
 
-    td(e($song_with_rating->{artist_name}))
-    . td(e($song_with_rating->{song_name}))
-    . td($song_playback_link)
-    . td($rating_choice)
-    . td({ -style => "background-color: $color_for_normalized_value;" },
-         $normalized_value_string)
-    . td($comment)
-    . td(submit(send_ratings => 'Send'));
+    td([ e($song_with_rating->{artist_name}),
+         e($song_with_rating->{song_name}),
+         $song_playback_link,
+         $rating_choice,
+         div({ -style => ("background-color: $color_for_normalized_value;"
+                          . "padding: 0.3em;") },
+             $normalized_value_string),
+         $comment,
+         submit(send_ratings => 'Send') ]);
   }
 
   sub table_song_rating_stats {
