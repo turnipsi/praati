@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1 -*-
-# $Id: test,v 1.23 2014/05/17 19:59:25 je Exp $
+# $Id: test,v 1.24 2014/05/25 19:42:44 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -10,7 +10,7 @@ use warnings FATAL => qw(all);
 use CGI;
 use HTML::SimpleParse;
 use HTML::TableContentParser;
-use Test::More tests => 16;
+use Test::More tests => 32;
 use Test::WWW::Mechanize;
 
 use lib '.';
@@ -317,16 +317,6 @@ my $critic1 = Praati::User->new_user($site,
                                     'Critic One',
                                     'jtreofnvwlcjiwe');
 
-my $critic2 = Praati::User->new_user($site,
-                                    'critic2@example.org',
-                                    'Critic Two',
-                                    'ofwqhowqjbnmqwo');
-
-my $critic3 = Praati::User->new_user($site,
-                                    'critic3@example.org',
-                                    'Critic Three',
-                                    'aorlnwwjpwiaqnl');
-
 $critic1
   and $critic1->login('critic')
   and $critic1->rate_songs($panel_name,
@@ -354,9 +344,13 @@ $critic1
                              q{Personal Jesus (The Stargate Mix)} => '3.5',
                              q{Heaven}                            => '3.5',
                              q{Soothe My Soul}                    => '4.0',
-                           });
+                           })
+  and $critic1->logout();
 
-$critic1 and $critic1->logout();
+my $critic2 = Praati::User->new_user($site,
+                                    'critic2@example.org',
+                                    'Critic Two',
+                                    'ofwqhowqjbnmqwo');
 
 $critic2
   and $critic2->login('critic')
@@ -385,40 +379,134 @@ $critic2
                              q{Personal Jesus (The Stargate Mix)} =>  '4.0',
                              q{Heaven}                            =>  '9.5',
                              q{Soothe My Soul}                    =>  '8.0',
-                           });
+                           })
+  and $critic2->logout();
 
-$critic2 and $critic2->logout();
+my %ratings_for_critics_three_and_four = (
+  q{Personal Jesus}                    =>  '7.5',
+  q{Just Can't Get Enough}             =>  '4.0',
+  q{Everything Counts}                 =>  '3.0',
+  q{Enjoy The Silence}                 =>  '6.0',
+  q{Shake The Disease}                 =>  '9.5',
+  q{See You}                           =>  '1.0',
+  q{It's No Good}                      =>  '9.0',
+  q{Strangelove}                       =>  '7.0',
+  q{Suffer Well}                       =>  '8.5',
+  q{Dream On}                          =>  '8.0',
+  q{People Are People}                 =>  '5.5',
+  q{Martyr}                            =>  '7.0',
+  q{Walking In My Shoes}               =>  '3.5',
+  q{I Feel You}                        => '10.0',
+  q{Precious}                          =>  '5.0',
+  q{Master And Servant}                =>  '4.0',
+  q{New Life}                          =>  '8.5',
+  q{Never Let Me Down Again}           =>  '5.0',
+  q{Wrong}                             =>  '2.5',
+  q{Peace}                             =>  '0.0',
+  q{Personal Jesus (The Stargate Mix)} =>  '4.5',
+  q{Heaven}                            =>  '5.0',
+  q{Soothe My Soul}                    =>  '8.5',
+);
+
+my $critic3 = Praati::User->new_user($site,
+                                    'critic3@example.org',
+                                    'Critic Three',
+                                    'aorlnwwjpwiaqnl');
+
+my $critic4 = Praati::User->new_user($site,
+                                    'critic4@example.org',
+                                    'Critic Four',
+                                    'rtrejptspaeiewm');
+
+# critics Three and Four have exactly the same mind:
 
 $critic3
   and $critic3->login('critic')
-  and $critic3->rate_songs($panel_name,
-                           {
-                             q{Personal Jesus}                    =>  '7.5',
-                             q{Just Can't Get Enough}             =>  '4.0',
-                             q{Everything Counts}                 =>  '3.0',
-                             q{Enjoy The Silence}                 =>  '6.0',
-                             q{Shake The Disease}                 =>  '9.5',
-                             q{See You}                           =>  '1.0',
-                             q{It's No Good}                      =>  '9.0',
-                             q{Strangelove}                       =>  '7.0',
-                             q{Suffer Well}                       =>  '8.5',
-                             q{Dream On}                          =>  '8.0',
-                             q{People Are People}                 =>  '5.5',
-                             q{Martyr}                            =>  '7.0',
-                             q{Walking In My Shoes}               =>  '3.5',
-                             q{I Feel You}                        => '10.0',
-                             q{Precious}                          =>  '5.0',
-                             q{Master And Servant}                =>  '4.0',
-                             q{New Life}                          =>  '8.5',
-                             q{Never Let Me Down Again}           =>  '5.0',
-                             q{Wrong}                             =>  '2.5',
-                             q{Peace}                             =>  '0.0',
-                             q{Personal Jesus (The Stargate Mix)} =>  '4.5',
-                             q{Heaven}                            =>  '5.0',
-                             q{Soothe My Soul}                    =>  '8.5',
-                           });
+  and $critic3->rate_songs($panel_name, \%ratings_for_critics_three_and_four)
+  and $critic3->logout();
 
-$critic3 and $critic3->logout();
+$critic4
+  and $critic4->login('critic')
+  and $critic4->rate_songs($panel_name, \%ratings_for_critics_three_and_four)
+  and $critic4->logout();
+
+# critic Five disagrees completely with critics Three and Four
+
+my $critic5 = Praati::User->new_user($site,
+                                    'critic5@example.org',
+                                    'Critic Five',
+                                    'pagrlmrczxorjfk');
+
+my %critics_three_and_four_opposite_ratings = (
+  map { $_ => (10.0 - $ratings_for_critics_three_and_four{ $_ }) }
+    keys %ratings_for_critics_three_and_four
+);
+
+$critic5
+  and $critic5->login('critic')
+  and $critic5->rate_songs($panel_name,
+                           \%critics_three_and_four_opposite_ratings)
+  and $critic5->logout();
+
+my $critic6 = Praati::User->new_user($site,
+                                    'critic6@example.org',
+                                    'Critic Six',
+                                    'mbrldoqnjjjglws');
+
+# critic Six is lazier than other
+
+$critic6
+  and $critic6->login('critic')
+  and $critic6->rate_songs($panel_name,
+                           {
+                             q{Just Can't Get Enough}             => '4.5',
+                             q{Shake The Disease}                 => '8.0',
+                             q{It's No Good}                      => '4.0',
+                             q{People Are People}                 => '6.5',
+                             q{Walking In My Shoes}               => '2.5',
+                             q{Precious}                          => '6.0',
+                             q{Never Let Me Down Again}           => '8.5',
+                             q{Peace}                             => '5.5',
+                             q{Heaven}                            => '2.0',
+                            })
+  and $critic6->logout();
+
+my $critic7 = Praati::User->new_user($site,
+                                    'critic7@example.org',
+                                    'Critic Seven',
+                                    'yoephvmreorejgr');
+
+# critic Seven cares enough to not care
+
+$critic7
+  and $critic7->login('critic')
+  and $critic7->rate_songs($panel_name,
+                           {
+                             q{Personal Jesus}                    => '4.0',
+                             q{Just Can't Get Enough}             => '4.0',
+                             q{Everything Counts}                 => '4.0',
+                             q{Enjoy The Silence}                 => '4.0',
+                             q{Shake The Disease}                 => '4.0',
+                             q{See You}                           => '4.0',
+                             q{It's No Good}                      => '4.0',
+                             q{Strangelove}                       => '4.0',
+                             q{Suffer Well}                       => '4.0',
+                             q{Dream On}                          => '4.0',
+                             q{People Are People}                 => '4.0',
+                             q{Martyr}                            => '4.0',
+                             q{Walking In My Shoes}               => '4.0',
+                             q{I Feel You}                        => '4.0',
+                             q{Precious}                          => '4.0',
+                             q{Master And Servant}                => '4.0',
+                             q{New Life}                          => '4.0',
+                             q{Never Let Me Down Again}           => '4.0',
+                             q{Wrong}                             => '4.0',
+                             q{Peace}                             => '4.0',
+                             q{Personal Jesus (The Stargate Mix)} => '4.0',
+                             q{Heaven}                            => '4.0',
+                             q{Soothe My Soul}                    => '4.0',
+                            })
+  and $critic7->logout();
 
 $admin1
   and $admin1->login('admin')
@@ -426,7 +514,11 @@ $admin1
                                             'Session A',
                                             'asc')
   and $admin1->check_listening_session_rating_counts([
+        [ 'Critic Five'  => 23, ],
+        [ 'Critic Four'  => 23, ],
         [ 'Critic One'   => 23, ],
+        [ 'Critic Seven' => 23, ],
         [ 'Critic Three' => 23, ],
         [ 'Critic Two'   => 23, ],
+        [ 'Critic Six'   =>  9, ],
       ]);
