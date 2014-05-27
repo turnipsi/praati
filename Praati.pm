@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.13 2014/05/25 06:43:59 je Exp $
+# $Id: Praati.pm,v 1.14 2014/05/27 19:21:17 je Exp $
 
 # use diagnostics;
 use strict;
@@ -2125,7 +2125,8 @@ package Praati::Controller {
       if (not check_user_session_key($user_session_key)) {
         add_ui_error($errors,
                      '*',
-                     t('To login, cookies must be accepted by the browser.'));
+                     # XXX should use t() but it is *not* available here.
+                     'To login, cookies must be accepted by the browser.');
       }
 
       eval {
