@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.14 2014/05/27 19:21:17 je Exp $
+# $Id: Praati.pm,v 1.15 2014/05/31 04:54:17 je Exp $
 
 # use diagnostics;
 use strict;
@@ -735,7 +735,7 @@ package Praati::Model {
   sub find_session_user {
     my ($user_session_key) = @_;
 
-    return if not defined $user_session_key;
+    return if not defined($user_session_key);
 
     my $user_id = eval {
                     one_value(q{ select user_id from user_sessions
@@ -766,7 +766,7 @@ package Praati::Model {
   sub cdf_normal {
     my ($mean, $stdev, $rating_value) = @_;
 
-    $stdev = defined $stdev && $stdev > 0  ?  $stdev  :  0.00001;
+    $stdev = defined($stdev) && $stdev > 0  ?  $stdev  :  0.00001;
 
     my $sum = my $value = my $x = ($rating_value - $mean) / $stdev;
 
@@ -1826,21 +1826,13 @@ package Praati::View {
   sub play_song {
     my ($song) = @_;
 
-    my $filepath = $song->{song_filepath};
-    open(my $mp3file, '<', $filepath)
-      or confess("Could not open $filepath for reading: $!");
-    my $mp3data = do { local $/; <$mp3file>; }
-      or confess("Could not read the mp3 file at $filepath: $!");
-    close($mp3file)
-      or warn("Could not close $mp3file");
-
-    response(page => $mp3data,
-             type => 'audio/mpeg');
+    response(filepath => $song->{song_filepath},
+             type     => 'audio/mpeg');
   }
 
   sub song_rating_choice {
     my ($rating_form_id, $song_rating_value_value) = @_;
-    my $value = defined $song_rating_value_value
+    my $value = defined($song_rating_value_value)
                  ? sprintf('%.1f', $song_rating_value_value)
                  : Praati::Constants::NO_SONG_RATING_MARKER;
 
@@ -2326,13 +2318,14 @@ package Praati::Controller {
 package Praati::Controller::Response {
   use Class::Struct __PACKAGE__, {
     cookie       => '$',
+    filepath     => '$',
     page         => '$',
     redirect_uri => '$',
     status       => '$',
     type         => '$',
   };
 
-  sub page_with_header {
+  sub page_header {
     my ($self, $q) = @_;
 
     my @header_args = (
@@ -2341,12 +2334,15 @@ package Praati::Controller::Response {
       defined($self->type  ) ? (-type   => $self->type  ) : (),
     );
 
-    $q->header(@header_args)
-    . $self->page;
+    $q->header(@header_args);
   }
 
   sub printout {
     my ($self, $q) = @_;
+
+    if (defined($self->filepath) && defined($self->type)) {
+      return $self->send_file($q);
+    }
 
     my $content
       = defined($self->redirect_uri)
@@ -2354,12 +2350,38 @@ package Praati::Controller::Response {
                          -uri    => $self->redirect_uri)
           :
         defined($self->page)
-          ? $self->page_with_header($q)
+          ? ($self->page_header($q) . $self->page)
           : undef;
 
     confess('Not a sensible response object') unless defined $content;
 
     print $content;
+  }
+
+  # send file in chunks so that sending starts quickly
+  # and not much memory is wasted
+  sub send_file {
+    my ($self, $q) = @_;
+
+    my $filepath = $self->filepath;
+    open(my $fd, '<', $filepath)
+      or confess("Could not open $filepath for reading: $!");
+
+    print $self->page_header($q);
+
+    my $data;
+
+    for (;;) {
+      my $bytes_read = read($fd, $data, 65536); # read 64k chunks
+      if (!defined($bytes_read)) {
+        warn "Problem reading file: $!";
+        last;
+      }
+      last if $bytes_read == 0;
+      print $data;
+    }
+
+    close($fd);
   }
 }
 
