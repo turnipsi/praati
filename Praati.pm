@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.17 2014/06/01 07:43:49 je Exp $
+# $Id: Praati.pm,v 1.18 2014/06/01 09:12:43 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1453,7 +1453,10 @@ package Praati::View {
       maybe_error(user_name => $errors, $error_wrapper),
       td([ t('name:'),           textfield('user_name')                ]),
 
+      maybe_error(user_password       => $errors, $error_wrapper),
       td([ t('password:'),       password_field('user_password')       ]),
+
+      maybe_error(user_password_again => $errors, $error_wrapper),
       td([ t('password again:'), password_field('user_password_again') ]),
 
       td({ -colspan => $table_width },
@@ -1865,6 +1868,7 @@ package Praati::View {
 
 package Praati::Controller {
   Praati::Model->import;
+  Praati::View::L10N->import;
 
   use BSD::arc4random qw(arc4random_bytes);
   use CGI qw(-any);
