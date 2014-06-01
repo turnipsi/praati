@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1 -*-
-# $Id: test,v 1.26 2014/05/27 19:21:00 je Exp $
+# $Id: test,v 1.27 2014/06/01 08:21:26 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -196,10 +196,15 @@ package Praati::User {
       foreach my $row (@{ $tables->[1]{rows} }) {
         my $cells = $row->{cells};
 
-        next unless $cells && $cells->[1] && $cells->[1]{data};
-        my $songname = $cells->[1]{data};
+        next unless $cells && $cells->[1] && $cells->[1]{data}
+                           && $cells->[3] && $cells->[3]{data};
 
-        next unless $cells->[3] && $cells->[3]{data};
+        my $songname;
+        my (undef, @songname_nodes) = get_parser_and_nodes($cells->[1]{data});
+        foreach (@songname_nodes) {
+          $songname = $_->{content} if $_->{type} eq 'text';
+        }
+        next unless $songname;
 
         my ($p, @nodes) = get_parser_and_nodes($cells->[3]{data});
         foreach (@nodes) {
@@ -304,7 +309,9 @@ package Praati::User {
 # main
 #
 
-my $site       = 'http://localhost/~je/praati/praati';
+die 'Usage: test site' unless $ARGV[0];
+
+my $site       = $ARGV[0];
 my $panel_name = 'Depeche Mode - Best of Greatest Hits';
 
 
