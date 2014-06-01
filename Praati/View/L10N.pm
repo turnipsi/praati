@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: L10N.pm,v 1.3 2014/05/09 18:38:16 je Exp $
+# $Id: L10N.pm,v 1.4 2014/06/01 07:34:05 je Exp $
 
 use strict;
 use warnings FATAL => qw(all);
@@ -93,7 +93,8 @@ package Praati::View::L10N::fi {
     'User rating counts' => 'Käyttäjien arvostelujen lukumäärä',
     'Playback events'    => 'Soittotapahtumat',
 
-    'play' => 'soita',
+    'Send all' => 'Lähetä kaikki',
+    'play'     => 'soita',
 
     'normalized rating average' => 'normalisoitujen arvostelujen keskiarvo',
     'rating average'            => 'arvostelujen keskiarvo',
