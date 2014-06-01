@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.18 2014/06/01 09:12:43 je Exp $
+# $Id: Praati.pm,v 1.19 2014/06/01 09:21:07 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1453,7 +1453,7 @@ package Praati::View {
       maybe_error(user_name => $errors, $error_wrapper),
       td([ t('name:'),           textfield('user_name')                ]),
 
-      maybe_error(user_password       => $errors, $error_wrapper),
+      maybe_error(user_password => $errors, $error_wrapper),
       td([ t('password:'),       password_field('user_password')       ]),
 
       maybe_error(user_password_again => $errors, $error_wrapper),
