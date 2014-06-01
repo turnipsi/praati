@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: praati,v 1.125 2014/05/17 19:46:26 je Exp $
+# $Id: praati,v 1.126 2014/06/01 08:01:13 je Exp $
 
 =pod
 
@@ -24,11 +24,12 @@ A sample Apache configuration:
   # XXX Hardcoded path, and this code will run as root!
   PerlRequire /var/www/users/je/praati/apache_startup.pl
 
-  # XXX why does not Files or Location work?
-  <Directory /users/*/praati>
+  <Location /praati>
     Options +ExecCGI
     PerlHandler Apache::PerlRun
     PerlSendHeader On
+    # XXX another hardcoded path
+    PerlSetEnv PERL5LIB /users/je/praati
     SetHandler perl-script
   </Directory>
 
