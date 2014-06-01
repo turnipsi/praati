@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: L10N.pm,v 1.4 2014/06/01 07:34:05 je Exp $
+# $Id: L10N.pm,v 1.5 2014/06/01 19:37:52 je Exp $
 
 use strict;
 use warnings FATAL => qw(all);
@@ -128,8 +128,9 @@ package Praati::View::L10N::fi {
     'normalized rating' => 'normalisoitu arvostelu',
     'comment'           => 'kommentti',
 
-    'previous' => 'edellinen',
-    'next'     => 'seuraava',
+    'previous'         => 'edellinen',
+    'next'             => 'seuraava',
+    'link to songfile' => 'linkki musiikkitiedostoon',
   );
 }
 

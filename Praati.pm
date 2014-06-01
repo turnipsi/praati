@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.19 2014/06/01 09:21:07 je Exp $
+# $Id: Praati.pm,v 1.20 2014/06/01 19:37:51 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1344,17 +1344,23 @@ package Praati::View {
     my $embedded_song_player
       = embed({ -src => link_to_song_playback($song_id) });
 
+    my $direct_link_to_song
+      = div(
+          a({ -href => link_to_song_playback($song_id) },
+            t('link to songfile')));
+
     my $user_rating_correlations
       = table_user_rating_correlations($listening_session_id, $event_number);
 
     my $page = h1($title)
-               . $embedded_song_player
                . h2( t('Song rating statistics') )
                  . $song_rating_stats
                . h2( t('Ratings for song') )
                  . $ratings_for_song
                . h2( t('User rating correlations') )
-                 . $user_rating_correlations;
+                 . $user_rating_correlations
+               . $embedded_song_player
+               . $direct_link_to_song;
 
     query(q{ update listening_events
                set listening_event_shown = listening_event_shown + 1
@@ -1728,17 +1734,26 @@ package Praati::View {
   # other
   #
 
-  sub color_for_rating_value {
-    my ($rating_value) = @_;
-    return '#808080' unless defined $rating_value;
+  sub color_for_an_interval {
+    my ($value, $min, $max) = @_;
 
-    my $green
-      = int(255.0 * ($rating_value / Praati::Constants::MAX_SONG_RATING));
+    confess('minimum and maximum are the same') if $min == $max;
+
+    my $green = int(255.0 * (($value - $min) / ($max - $min)));
 
     my $red  = int(255.0 - $green);
     my $blue = 96;
 
     sprintf('#%02x%02x%02x', $red, $green, $blue);
+  }
+
+  sub color_for_rating_value {
+    my ($rating_value) = @_;
+    return '#808080' unless defined $rating_value;
+
+    color_for_an_interval($rating_value,
+                          0,
+                          Praati::Constants::MAX_SONG_RATING);
   }
 
   sub link_to_song_playback {
