@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: L10N.pm,v 1.5 2014/06/01 19:37:52 je Exp $
+# $Id: L10N.pm,v 1.6 2014/06/02 20:16:16 je Exp $
 
 use strict;
 use warnings FATAL => qw(all);
@@ -122,11 +122,6 @@ package Praati::View::L10N::fi {
 
     'Password is missing.'    => 'Salasana puuttuu.',
     'Passwords do not match.' => 'Salasanat eivät täsmää.',
-
-    'username'          => 'käyttäjänimi',
-    'rating'            => 'arvostelu',
-    'normalized rating' => 'normalisoitu arvostelu',
-    'comment'           => 'kommentti',
 
     'previous'         => 'edellinen',
     'next'             => 'seuraava',

@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.21 2014/06/02 15:56:25 je Exp $
+# $Id: Praati.pm,v 1.22 2014/06/02 20:16:14 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1548,7 +1548,7 @@ package Praati::View {
                         $panel_id,
                         $user_id);
 
-    my @tablerows = map { tablerow_song_rating_by_user($_) } @$songs;
+    my @tablerows = map { tablerow_edit_song_rating_by_user($_) } @$songs;
 
     concat( table( Tr(\@tablerows) ) );
   }
@@ -1597,29 +1597,28 @@ package Praati::View {
   sub table_ratings_for_song {
     my ($listening_session_id, $song_id) = @_;
 
-    my $rows
-      = rows(q{ select user_name,
-                       song_rating_value_value,
-                       round(song_rating_normalized_value_value, 1),
-                       song_rating_comment
-                  from ls_song_ratings_with_set_values_and_sessions
-                    join users using (user_id)
-                where listening_session_id = ?
-                  and song_id = ?
-                order by song_rating_normalized_value_value desc; },
-             $listening_session_id,
-             $song_id);
+    my $song_ratings
+      = records(q{ select user_name,
+                          song_rating_value_value,
+                          round(song_rating_normalized_value_value, 1)
+                            as song_rating_normalized_and_rounded,
+                          song_rating_comment
+                     from ls_song_ratings_with_set_values_and_sessions
+                       join users using (user_id)
+                   where listening_session_id = ?
+                     and song_id = ?
+                   order by song_rating_normalized_value_value desc,
+                            song_rating_value_value desc; },
+                $listening_session_id,
+                $song_id);
 
     table(
-      Tr([ th([ t('username'),
-                t('rating'),
-                t('normalized rating'),
-                t('comment') ]),
-           map { td($_) } @$rows ]));
+      Tr([ map { tablerow_song_rating_by_user($_) }
+             @$song_ratings ]));
 
   }
 
-  sub tablerow_song_rating_by_user {
+  sub tablerow_edit_song_rating_by_user {
     my ($song_with_rating) = @_;
 
     my ($rating_form_id, $comment_form_id)
@@ -1655,6 +1654,33 @@ package Praati::View {
              $normalized_value_string),
          $comment,
          submit(send_ratings => t('Send all')) ]);
+  }
+
+  sub tablerow_song_rating_by_user {
+    my ($song_rating) = @_;
+
+    my $normalized_value = $song_rating->{song_rating_normalized_and_rounded};
+    my $color_for_normalized_value = color_for_rating_value($normalized_value);
+
+    my $normalized_rating_html
+      = div({ -class => 'song_rating_normalized_and_rounded',
+              -style => "background-color: $color_for_normalized_value;" },
+            $song_rating->{song_rating_normalized_and_rounded});
+
+    my $rating_html
+      = div(sprintf('(%s)', $song_rating->{song_rating_value_value}));
+
+    my $user_name_html = div({ -class => 'user_name' },
+                             $song_rating->{user_name});
+
+    my $song_rating_comment_html
+      = div({ -class => 'comment' },
+            $song_rating->{song_rating_comment});
+
+    td($normalized_rating_html,
+       $rating_html)
+    . td($user_name_html,
+         $song_rating_comment_html);
   }
 
   sub table_song_rating_stats {
@@ -1744,7 +1770,7 @@ package Praati::View {
       $value = $max;
     }
 
-    if ($value < $max) {
+    if ($value < $min) {
       cluck('Got a value that is lower than minimum, setting to minimum.');
       $value = $min;
     }
