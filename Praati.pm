@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.22 2014/06/02 20:16:14 je Exp $
+# $Id: Praati.pm,v 1.23 2014/06/02 20:23:06 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1729,8 +1729,15 @@ package Praati::View {
     foreach my $correlation (@$correlations) {
       my $i = $user_rownumber{ $correlation->{ user_a_user_name } };
       my $j = $user_rownumber{ $correlation->{ user_b_user_name } };
-      $table[ $i ][ $j ] = sprintf('%.2f',
-                                   $correlation->{normalized_rating_correlation});
+
+      my $correlation_color
+        = color_for_an_interval($correlation->{normalized_rating_correlation},
+                                -1.0,
+                                1.0);
+
+      $table[ $i ][ $j ]
+        = div({ -style => "background-color: $correlation_color;" },
+              sprintf('%.2f', $correlation->{normalized_rating_correlation}));
     }
 
     table(Tr([ map {
