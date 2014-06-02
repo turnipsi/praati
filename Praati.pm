@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.20 2014/06/01 19:37:51 je Exp $
+# $Id: Praati.pm,v 1.21 2014/06/02 15:56:25 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1116,7 +1116,7 @@ package Praati::View {
   Praati::Model->import;
   Praati::View::L10N->import;
 
-  use CGI::Carp;
+  use CGI::Carp qw(cluck);
   use List::MoreUtils qw(uniq);
   use Scalar::Util qw(blessed);
   use URI::Escape;
@@ -1738,6 +1738,16 @@ package Praati::View {
     my ($value, $min, $max) = @_;
 
     confess('minimum and maximum are the same') if $min == $max;
+
+    if ($value > $max) {
+      cluck('Got a value that is higher than maximum, setting to maximum.');
+      $value = $max;
+    }
+
+    if ($value < $max) {
+      cluck('Got a value that is lower than minimum, setting to minimum.');
+      $value = $min;
+    }
 
     my $green = int(255.0 * (($value - $min) / ($max - $min)));
 
