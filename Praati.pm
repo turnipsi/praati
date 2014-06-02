@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.23 2014/06/02 20:23:06 je Exp $
+# $Id: Praati.pm,v 1.24 2014/06/02 20:38:45 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1320,12 +1320,12 @@ package Praati::View {
 
     my $previous_link_html
       = $previous_link
-          ? (a({ -href => $previous_link }, t('previous')) . ' - ')
+          ? a({ -href => $previous_link, -style => 'padding-right: 1em;' }, '<')
           : '';
 
     my $next_link_html
       = $next_link
-          ? (' - ' . a({ -href => $next_link }, t('next')))
+          ? a({ -href => $next_link, -style => 'padding-left: 1em;' }, '>')
           : '';
 
     my $title = sprintf('%s%d. %s: %s%s',
@@ -1342,25 +1342,22 @@ package Praati::View {
                                                   $song_id);
 
     my $embedded_song_player
-      = embed({ -src => link_to_song_playback($song_id) });
-
-    my $direct_link_to_song
-      = div(
-          a({ -href => link_to_song_playback($song_id) },
-            t('link to songfile')));
+      = div({ -style => 'float: right;' },
+            embed({ -src  => link_to_song_playback($song_id) }),
+            div(a({ -href => link_to_song_playback($song_id) },
+                  t('direct link'))));
 
     my $user_rating_correlations
       = table_user_rating_correlations($listening_session_id, $event_number);
 
-    my $page = h1($title)
+    my $page = $embedded_song_player
+               . h1($title)
                . h2( t('Song rating statistics') )
                  . $song_rating_stats
                . h2( t('Ratings for song') )
                  . $ratings_for_song
                . h2( t('User rating correlations') )
-                 . $user_rating_correlations
-               . $embedded_song_player
-               . $direct_link_to_song;
+                 . $user_rating_correlations;
 
     query(q{ update listening_events
                set listening_event_shown = listening_event_shown + 1
