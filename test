@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1 -*-
-# $Id: test,v 1.28 2014/06/01 09:20:54 je Exp $
+# $Id: test,v 1.29 2014/06/03 18:53:44 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -285,8 +285,7 @@ package Praati::User {
       plan(tests => 5);
 
       $self->main_page_ok()
-        # and $self->browser->text_contains( t('The main page.') )
-        and $self->browser->text_contains( 'Tervetuloa' ) # XXX a temporary hack
+        and $self->browser->text_contains( t('The main page.') )
         and $self->browser->follow_link_ok({ text => t('New user') })
         or return;
 
