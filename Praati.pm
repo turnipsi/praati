@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.27 2014/06/03 19:32:43 je Exp $
+# $Id: Praati.pm,v 1.28 2014/06/03 20:18:05 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1595,8 +1595,7 @@ package Praati::View {
     my $song_ratings
       = records(q{ select user_name,
                           song_rating_value_value,
-                          round(song_rating_normalized_value_value, 1)
-                            as song_rating_normalized_and_rounded,
+                          song_rating_normalized_value_value,
                           song_rating_comment
                      from ls_song_ratings_with_set_values_and_sessions
                        join users using (user_id)
@@ -1654,11 +1653,11 @@ package Praati::View {
   sub tablerow_song_rating_by_user {
     my ($song_rating) = @_;
 
-    my $normalized_value = $song_rating->{song_rating_normalized_and_rounded};
+    my $normalized_value = $song_rating->{song_rating_normalized_value_value};
     my $color_for_normalized_value = color_for_rating_value($normalized_value);
 
     my $normalized_rating_html
-      = div({ -class => 'song_rating_normalized_and_rounded',
+      = div({ -class => 'song_rating_normalized',
               -style => "background-color: $color_for_normalized_value;" },
             $song_rating->{song_rating_normalized_and_rounded});
 
@@ -1681,25 +1680,26 @@ package Praati::View {
   sub table_song_rating_stats {
     my ($listening_session_id, $song_id) = @_;
 
-    my $song_rating_stats
+    my $stats
       = one_record(q{ select * from ls_song_rating_results
                         where listening_session_id = ?
                           and song_id = ?; },
                    $listening_session_id,
                    $song_id);
 
-    my @tablespec = (
-      [ t('normalized rating average') => 'song_normalized_rating_value_avg', ],
-      [ t('rating average')            => 'song_rating_value_avg',            ],
-      [ t('normalized rating standard deviation')
-           => 'song_normalized_rating_value_stdev',                           ],
-      [ t('rating standard deviation') => 'song_rating_value_stdev',          ],
-    );
+    my $color_for_normalized_value
+      = color_for_rating_value($stats->{song_normalized_rating_value_avg});
 
     table(
-      Tr([ map { td([ $_->[0],
-                      sprintf('%.3f', $song_rating_stats->{ $_->[1] }) ]) }
-             @tablespec ]));
+      Tr([ td({ -class => 'song_normalized_rating_value_avg',
+                -style => "background-color: $color_for_normalized_value;" },
+              sprintf('%.3f', $stats->{song_normalized_rating_value_avg})),
+
+           td(sprintf('(%.3f)', $stats->{song_rating_value_avg})),
+
+           td(sprintf('&sigma; = %.3f (%.3f)',
+                      $stats->{song_normalized_rating_value_stdev},
+                      $stats->{song_rating_value_stdev})) ]));
   }
 
   sub table_user_rating_correlations {
