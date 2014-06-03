@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.25 2014/06/03 18:54:58 je Exp $
+# $Id: Praati.pm,v 1.26 2014/06/03 19:22:34 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1119,6 +1119,7 @@ package Praati::View {
   use CGI::Carp qw(cluck);
   use List::MoreUtils qw(uniq);
   use Scalar::Util qw(blessed);
+  use Text::Abbrev;
   use URI::Escape;
 
   our $Lh;
@@ -1713,15 +1714,17 @@ package Praati::View {
                 $listening_session_id,
                 $event_number);
 
-    my @userlist
-      = sort(uniq(map { $_->{user_a_user_name}, $_->{user_b_user_name} }
-                    @$correlations));
+    my @userlist = get_userlist_for_correlations($correlations);
+    my %username_short_forms = make_username_short_forms(@userlist);
+
     my %user_rownumber = map { $userlist[$_] => ($_ + 1) } (0 .. $#userlist);
 
     my @table;
 
-    $table[ 0      ][ $_ + 1 ] = $userlist[$_] foreach 0 .. $#userlist;
-    $table[ $_ + 1 ][ 0      ] = $userlist[$_] foreach 0 .. $#userlist;
+    foreach (0 .. $#userlist) {
+      $table[ 0      ][ $_ + 1 ] = $username_short_forms{ $userlist[$_] };
+      $table[ $_ + 1 ][ 0      ] = $username_short_forms{ $userlist[$_] };
+    }
 
     foreach my $correlation (@$correlations) {
       my $i = $user_rownumber{ $correlation->{ user_a_user_name } };
@@ -1796,6 +1799,12 @@ package Praati::View {
                           Praati::Constants::MAX_SONG_RATING);
   }
 
+  sub get_userlist_for_correlations {
+    my ($correlations) = @_;
+    sort(uniq(map { $_->{user_a_user_name}, $_->{user_b_user_name} }
+                @$correlations));
+  }
+
   sub link_to_song_playback {
     my ($song_id) = @_;
     link_to(sprintf('song/play?song_id=%d', $song_id));
@@ -1839,6 +1848,24 @@ package Praati::View {
           e($user->{user_name}),
           e($user->{user_role}))
       : '';
+  }
+
+  sub make_username_short_forms {
+    my (@userlist) = @_;
+    my %user_abbreviations = abbrev(@userlist);
+    my %short_forms;
+
+    foreach my $username (@userlist) {
+      foreach (1 .. length($username)) {
+        my $possible_abbreviation_for_username = substr($username, 0, $_);
+        if ($user_abbreviations{ $possible_abbreviation_for_username }) {
+          $short_forms{ $username } = $possible_abbreviation_for_username;
+          last;
+        }
+      }
+    }
+
+    %short_forms;
   }
 
   sub panel_action_list_item {

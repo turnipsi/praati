@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: apache_startup.pl,v 1.5 2014/05/17 19:47:33 je Exp $
+# $Id: apache_startup.pl,v 1.6 2014/06/03 19:22:34 je Exp $
 
 # this code will run as root!
 
@@ -33,6 +33,7 @@ use MP3::Tag                ();
 use POSIX                   ();
 use Scalar::Util            ();
 use Statistics::Descriptive ();
+use Text::Abbrev            ();
 use Tie::Hash::NamedCapture ();
 use URI::Escape             ();
 
