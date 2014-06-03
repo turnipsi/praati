@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.24 2014/06/02 20:38:45 je Exp $
+# $Id: Praati.pm,v 1.25 2014/06/03 18:54:58 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1650,7 +1650,7 @@ package Praati::View {
                          . "padding: 0.3em;" },
              $normalized_value_string),
          $comment,
-         submit(send_ratings => t('Send all')) ]);
+         submit(send_ratings => t('Save all')) ]);
   }
 
   sub tablerow_song_rating_by_user {
