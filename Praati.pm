@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.28 2014/06/03 20:18:05 je Exp $
+# $Id: Praati.pm,v 1.29 2014/06/03 20:20:54 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1659,7 +1659,8 @@ package Praati::View {
     my $normalized_rating_html
       = div({ -class => 'song_rating_normalized',
               -style => "background-color: $color_for_normalized_value;" },
-            $song_rating->{song_rating_normalized_and_rounded});
+            sprintf('%.1f',
+                    $song_rating->{song_rating_normalized_value_value}));
 
     my $rating_html
       = div(sprintf('(%s)', $song_rating->{song_rating_value_value}));
