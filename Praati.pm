@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.26 2014/06/03 19:22:34 je Exp $
+# $Id: Praati.pm,v 1.27 2014/06/03 19:32:43 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1353,12 +1353,9 @@ package Praati::View {
 
     my $page = $embedded_song_player
                . h1($title)
-               . h2( t('Song rating statistics') )
-                 . $song_rating_stats
-               . h2( t('Ratings for song') )
-                 . $ratings_for_song
-               . h2( t('User rating correlations') )
-                 . $user_rating_correlations;
+               . $song_rating_stats
+               . $ratings_for_song
+               . $user_rating_correlations;
 
     query(q{ update listening_events
                set listening_event_shown = listening_event_shown + 1

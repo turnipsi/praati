@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: L10N.pm,v 1.8 2014/06/03 18:55:00 je Exp $
+# $Id: L10N.pm,v 1.9 2014/06/03 19:32:44 je Exp $
 
 use strict;
 use warnings FATAL => qw(all);
@@ -83,10 +83,6 @@ package Praati::View::L10N::fi {
     'Create'                  => 'Luo',
 
     'Play song at position [_1]' => 'Soita laulu, jolla on sijoitus [_1]',
-
-    'Song rating statistics'   => 'Laulun arvostelujen tilastotietoa',
-    'Ratings for song'         => 'Laulun arvostelut',
-    'User rating correlations' => 'Käyttäjien arvostelujen korrelaatiot',
 
     'Listening event for [_1]' => 'Kuuntelusessio laululle [_1]',
 
