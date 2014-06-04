@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.31 2014/06/04 19:12:00 je Exp $
+# $Id: Praati.pm,v 1.32 2014/06/04 19:21:58 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1312,31 +1312,13 @@ package Praati::View {
   sub page_listening_event {
     my ($event_and_song) = @_;
 
-    my $event_number         = $event_and_song->{listening_event_number};
+    my $event_number         = $event_and_song->{listening_session_id};
     my $listening_session_id = $event_and_song->{listening_session_id};
     my $song_id              = $event_and_song->{song_id};
 
-    my $previous_link = link_uri_if_event_exists($event_number - 1,
-                                                 $listening_session_id);
-    my $next_link     = link_uri_if_event_exists($event_number + 1,
-                                                 $listening_session_id);
-
-    my $previous_link_html
-      = $previous_link
-          ? a({ -href => $previous_link, -style => 'padding-right: 1em;' }, '<')
-          : '';
-
-    my $next_link_html
-      = $next_link
-          ? a({ -href => $next_link, -style => 'padding-left: 1em;' }, '>')
-          : '';
-
-    my $title = sprintf('%s%d. %s: %s%s',
-                        $previous_link_html,
-                        e($event_and_song->{song_position}),
-                        e($event_and_song->{artist_name}),
-                        e($event_and_song->{song_name}),
-                        $next_link_html);
+    my $title = song_title_for_listening_event($event_and_song,
+                                               $event_number,
+                                               $listening_session_id);
 
     my $rating_stats = table_song_rating_stats($listening_session_id,
                                                $song_id);
@@ -1949,6 +1931,32 @@ package Praati::View {
         map { sprintf('%.1f', $_ * $step_size) }
           0 .. (Praati::Constants::MAX_SONG_RATING / $step_size))
     );
+  }
+
+  sub song_title_for_listening_event {
+    my ($event_and_song, $event_number, $listening_session_id) = @_;
+
+    my $previous_link = link_uri_if_event_exists($event_number - 1,
+                                                 $listening_session_id);
+    my $next_link     = link_uri_if_event_exists($event_number + 1,
+                                                 $listening_session_id);
+
+    my $previous_link_html
+      = $previous_link
+          ? a({ -href => $previous_link, -style => 'padding-right: 1em;' }, '<')
+          : '';
+
+    my $next_link_html
+      = $next_link
+          ? a({ -href => $next_link, -style => 'padding-left: 1em;' }, '>')
+          : '';
+
+    sprintf('%s%d. %s: %s%s',
+            $previous_link_html,
+            e($event_and_song->{song_position}),
+            e($event_and_song->{artist_name}),
+            e($event_and_song->{song_name}),
+            $next_link_html);
   }
 }
 
