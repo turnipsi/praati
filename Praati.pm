@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.34 2014/06/04 19:41:45 je Exp $
+# $Id: Praati.pm,v 1.35 2014/06/04 19:48:43 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1164,18 +1164,12 @@ package Praati::View {
 
   sub css {
     <<'EOF';
-.rating_stats     { float: left; }
-.ratings_for_song { float: left; }
-
-.next_song_link     { padding-left:  1em; }
-.previous_song_link { padding-right: 1em; }
+/*
+ * styles for editing ratings
+ */
 
 .normalized_rating_in_edit_song_rating {
   padding: 0.3em;
-}
-
-.song_rating_by_user_normalized {
-  /* XXX */
 }
 
 .song_name_in_edit_song_rating {
@@ -1183,9 +1177,38 @@ package Praati::View {
   padding-right: 0.7em;
 }
 
+
+/*
+ * listening event styles
+ */
+
+/* general */
+
+.next_song_link     { padding-left:  1em; }
+.previous_song_link { padding-right: 1em; }
+
+.rating_stats     { float: left; }
+.ratings_for_song { float: left; }
+
+.song_normalized_rating_value_avg {
+  /* XXX */
+  font-size: 4em;
+}
+
+/* song ratings by users */
+
+.song_rating_by_user_normalized {
+  /* XXX */
+}
+
 .user_name {
   /* XXX */
 }
+
+.comment {
+  /* XXX */
+}
+
 EOF
   }
 
