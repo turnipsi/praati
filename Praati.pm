@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.33 2014/06/04 19:31:58 je Exp $
+# $Id: Praati.pm,v 1.34 2014/06/04 19:41:45 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1164,6 +1164,28 @@ package Praati::View {
 
   sub css {
     <<'EOF';
+.rating_stats     { float: left; }
+.ratings_for_song { float: left; }
+
+.next_song_link     { padding-left:  1em; }
+.previous_song_link { padding-right: 1em; }
+
+.normalized_rating_in_edit_song_rating {
+  padding: 0.3em;
+}
+
+.song_rating_by_user_normalized {
+  /* XXX */
+}
+
+.song_name_in_edit_song_rating {
+  padding-left:  0.7em;
+  padding-right: 0.7em;
+}
+
+.user_name {
+  /* XXX */
+}
 EOF
   }
 
@@ -1337,8 +1359,8 @@ EOF
 
     my $page = audio_player($song_id)
                . h1($title)
-               . div({ -style => 'float: left;' }, $rating_stats    )
-               . div({ -style => 'float: left;' }, $ratings_for_song)
+               . div({ -class => 'rating_stats'     }, $rating_stats    )
+               . div({ -class => 'ratings_for_song' }, $ratings_for_song)
                . $user_rating_correlations;
 
     query(q{ update listening_events
@@ -1623,12 +1645,12 @@ EOF
           t('play'));
 
     td([ e($song_with_rating->{artist_name}),
-         div({ -style => 'padding-left: 0.7em; padding-right: 0.7em;' },
+         div({ -class => 'song_name_in_edit_song_rating' },
              e($song_with_rating->{song_name})),
          $song_playback_link,
          $rating_choice,
-         div({ -style => "background-color: $color_for_normalized_value; "
-                         . "padding: 0.3em;" },
+         div({ -class => 'normalized_rating_in_edit_song_rating',
+               -style => "background-color: $color_for_normalized_value;" },
              $normalized_value_string),
          $comment,
          submit(send_ratings => t('Save all')) ]);
@@ -1641,7 +1663,7 @@ EOF
     my $color_for_normalized_value = color_for_rating_value($normalized_value);
 
     my $normalized_rating_html
-      = div({ -class => 'song_rating_normalized',
+      = div({ -class => 'song_rating_by_user_normalized',
               -style => "background-color: $color_for_normalized_value;" },
             sprintf('%.1f',
                     $song_rating->{song_rating_normalized_value_value}));
@@ -1949,12 +1971,16 @@ EOF
 
     my $previous_link_html
       = $previous_link
-          ? a({ -href => $previous_link, -style => 'padding-right: 1em;' }, '<')
+          ? a({ -class => 'previous_song_link',
+                -href  => $previous_link },
+              '<')
           : '';
 
     my $next_link_html
       = $next_link
-          ? a({ -href => $next_link, -style => 'padding-left: 1em;' }, '>')
+          ? a({ -class => 'next_song_link',
+                -href  => $next_link },
+              '>')
           : '';
 
     sprintf('%s%d. %s: %s%s',
