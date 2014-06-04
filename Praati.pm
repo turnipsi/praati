@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.30 2014/06/04 18:48:55 je Exp $
+# $Id: Praati.pm,v 1.31 2014/06/04 19:12:00 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1126,6 +1126,7 @@ package Praati::View {
 
   BEGIN {
     my @query_methods = qw(a
+                           audio
                            div
                            embed
                            end_html
@@ -1141,6 +1142,7 @@ package Praati::View {
                            password_field
                            radio_group
                            Select
+                           source
                            start_html
                            submit
                            table
@@ -1336,9 +1338,8 @@ package Praati::View {
                         e($event_and_song->{song_name}),
                         $next_link_html);
 
-    my $song_rating_stats_and_player
-      = song_rating_stats_and_player($listening_session_id,
-                                     $song_id);
+    my $rating_stats = table_song_rating_stats($listening_session_id,
+                                               $song_id);
 
     my $ratings_for_song = table_ratings_for_song($listening_session_id,
                                                   $song_id);
@@ -1346,10 +1347,10 @@ package Praati::View {
     my $user_rating_correlations
       = table_user_rating_correlations($listening_session_id, $event_number);
 
-    my $page = h1($title)
-               . div({ -style => 'float: left;' },
-                     $song_rating_stats_and_player)
-               . $ratings_for_song
+    my $page = audio_player($song_id)
+               . h1($title)
+               . div({ -style => 'float: left;' }, $rating_stats    )
+               . div({ -style => 'float: left;' }, $ratings_for_song)
                . $user_rating_correlations;
 
     query(q{ update listening_events
@@ -1762,6 +1763,19 @@ package Praati::View {
   # other
   #
 
+  sub audio_player {
+    my ($song_id) = @_;
+    my $playback_link = link_to_song_playback($song_id);
+
+    div(
+      audio({ -autoplay => undef, -controls => undef },
+            source({ -src  => $playback_link,
+                     -type => 'audio/mpeg' }),
+            embed({ -src => $playback_link }))
+      . sprintf('(%s)', a({ -href => link_to_song_playback($song_id) },
+                          'mp3')));
+  }
+
   sub color_for_an_interval {
     my ($value, $min, $max) = @_;
 
@@ -1924,22 +1938,6 @@ package Praati::View {
                      $_,
                      $_)
            } song_rating_values());
-  }
-
-  sub song_rating_stats_and_player {
-    my ($listening_session_id, $song_id) = @_;
-    my $rating_stats = table_song_rating_stats($listening_session_id,
-                                               $song_id);
-
-    my $embedded_song_player
-      = div(embed({ -src => link_to_song_playback($song_id) }));
-
-    my $direct_playback_link = div(a({ -href => link_to_song_playback($song_id) },
-                                     t('direct link')));
-
-    $rating_stats
-    . $embedded_song_player
-    . $direct_playback_link;
   }
 
   sub song_rating_values {
