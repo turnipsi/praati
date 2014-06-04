@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.32 2014/06/04 19:21:58 je Exp $
+# $Id: Praati.pm,v 1.33 2014/06/04 19:31:58 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1162,6 +1162,11 @@ package Praati::View {
 
   sub concat { join('' => @_); }
 
+  sub css {
+    <<'EOF';
+EOF
+  }
+
   sub e { escapeHTML(@_); }
 
   sub link_if_not_this_page {
@@ -1222,6 +1227,7 @@ package Praati::View {
 
     my @start_html_opts = (
                             $opts{-start_html} ? @{ $opts{-start_html} } : (),
+                            -style => { -code => css(), },
                             -title => "Praati - $title",
                           );
 
@@ -1312,7 +1318,7 @@ package Praati::View {
   sub page_listening_event {
     my ($event_and_song) = @_;
 
-    my $event_number         = $event_and_song->{listening_session_id};
+    my $event_number         = $event_and_song->{listening_event_number};
     my $listening_session_id = $event_and_song->{listening_session_id};
     my $song_id              = $event_and_song->{song_id};
 
