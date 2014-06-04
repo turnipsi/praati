@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.29 2014/06/03 20:20:54 je Exp $
+# $Id: Praati.pm,v 1.30 2014/06/04 18:48:55 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1336,24 +1336,19 @@ package Praati::View {
                         e($event_and_song->{song_name}),
                         $next_link_html);
 
-    my $song_rating_stats = table_song_rating_stats($listening_session_id,
-                                                    $song_id);
+    my $song_rating_stats_and_player
+      = song_rating_stats_and_player($listening_session_id,
+                                     $song_id);
 
     my $ratings_for_song = table_ratings_for_song($listening_session_id,
                                                   $song_id);
 
-    my $embedded_song_player
-      = div({ -style => 'float: right;' },
-            embed({ -src  => link_to_song_playback($song_id) }),
-            div(a({ -href => link_to_song_playback($song_id) },
-                  t('direct link'))));
-
     my $user_rating_correlations
       = table_user_rating_correlations($listening_session_id, $event_number);
 
-    my $page = $embedded_song_player
-               . h1($title)
-               . $song_rating_stats
+    my $page = h1($title)
+               . div({ -style => 'float: left;' },
+                     $song_rating_stats_and_player)
                . $ratings_for_song
                . $user_rating_correlations;
 
@@ -1698,8 +1693,10 @@ package Praati::View {
 
            td(sprintf('(%.3f)', $stats->{song_rating_value_avg})),
 
-           td(sprintf('&sigma; = %.3f (%.3f)',
-                      $stats->{song_normalized_rating_value_stdev},
+           td(sprintf('norm. &sigma; = %.3f',
+                      $stats->{song_normalized_rating_value_stdev})),
+
+           td(sprintf('(&sigma; = %.3f)',
                       $stats->{song_rating_value_stdev})) ]));
   }
 
@@ -1927,6 +1924,22 @@ package Praati::View {
                      $_,
                      $_)
            } song_rating_values());
+  }
+
+  sub song_rating_stats_and_player {
+    my ($listening_session_id, $song_id) = @_;
+    my $rating_stats = table_song_rating_stats($listening_session_id,
+                                               $song_id);
+
+    my $embedded_song_player
+      = div(embed({ -src => link_to_song_playback($song_id) }));
+
+    my $direct_playback_link = div(a({ -href => link_to_song_playback($song_id) },
+                                     t('direct link')));
+
+    $rating_stats
+    . $embedded_song_player
+    . $direct_playback_link;
   }
 
   sub song_rating_values {
