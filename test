@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1 -*-
-# $Id: test,v 1.29 2014/06/03 18:53:44 je Exp $
+# $Id: test,v 1.30 2014/06/06 20:31:16 je Exp $
 
 use autodie;
 # use diagnostics;
@@ -323,11 +323,11 @@ my $admin1 = Praati::User->new_user($site,
                                     'pogjwviwjvalaook');
 
 
-# Critic One
+# critic One
 
 my $critic1 = Praati::User->new_user($site,
                                     'critic1@example.org',
-                                    'Critic One',
+                                    'One',
                                     'jtreofnvwlcjiwe');
 
 $critic1
@@ -361,11 +361,11 @@ $critic1
   and $critic1->logout();
 
 
-# Critic Two
+# critic Two
 
 my $critic2 = Praati::User->new_user($site,
                                     'critic2@example.org',
-                                    'Critic Two',
+                                    'Two',
                                     'ofwqhowqjbnmqwo');
 
 $critic2
@@ -429,12 +429,12 @@ my %ratings_for_critics_three_and_four = (
 
 my $critic3 = Praati::User->new_user($site,
                                     'critic3@example.org',
-                                    'Critic Three',
+                                    'Three',
                                     'aorlnwwjpwiaqnl');
 
 my $critic4 = Praati::User->new_user($site,
                                     'critic4@example.org',
-                                    'Critic Four',
+                                    'Four',
                                     'rtrejptspaeiewm');
 
 $critic3
@@ -452,7 +452,7 @@ $critic4
 
 my $critic5 = Praati::User->new_user($site,
                                     'critic5@example.org',
-                                    'Critic Five',
+                                    'Five',
                                     'pagrlmrczxorjfk');
 
 my %critics_three_and_four_opposite_ratings = (
@@ -468,7 +468,7 @@ $critic5
 
 my $critic6 = Praati::User->new_user($site,
                                     'critic6@example.org',
-                                    'Critic Six',
+                                    'Six',
                                     'mbrldoqnjjjglws');
 
 
@@ -495,7 +495,7 @@ $critic6
 
 my $critic7 = Praati::User->new_user($site,
                                     'critic7@example.org',
-                                    'Critic Seven',
+                                    'Seven',
                                     'yoephvmreorejgr');
 
 $critic7
@@ -533,7 +533,7 @@ $critic7
 
 my $critic8 = Praati::User->new_user($site,
                                     'critic8@example.org',
-                                    'Critic Eight',
+                                    'Eight',
                                     'trergrewtpavxwk');
 
 $critic8
@@ -624,14 +624,14 @@ $admin1
                                             'Session A',
                                             'asc')
   and $admin1->check_listening_session_rating_counts([
-        [ 'Critic Five'                      => 23, ],
-        [ 'Critic Four'                      => 23, ],
-        [ 'Critic One'                       => 23, ],
-        [ 'Critic Seven'                     => 23, ],
-        [ 'Critic Three'                     => 23, ],
-        [ 'Critic Two'                       => 23, ],
-        [ 'Critic Eight'                     => 22, ],
+        [ 'Five'                             => 23, ],
+        [ 'Four'                             => 23, ],
+        [ 'One'                              => 23, ],
+        [ 'Seven'                            => 23, ],
+        [ 'Three'                            => 23, ],
+        [ 'Two'                              => 23, ],
+        [ 'Eight'                            => 22, ],
         [ 'An Exceptionally Talented Critic' => 19, ],
-        [ 'Critic Six'                       =>  9, ],
+        [ 'Six'                              =>  9, ],
       ])
   and $admin1->logout();
