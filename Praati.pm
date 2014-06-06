@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.35 2014/06/04 19:48:43 je Exp $
+# $Id: Praati.pm,v 1.36 2014/06/06 21:00:00 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1143,6 +1143,7 @@ package Praati::View {
                            radio_group
                            Select
                            source
+                           span
                            start_html
                            submit
                            table
@@ -1187,25 +1188,59 @@ package Praati::View {
 .next_song_link     { padding-left:  1em; }
 .previous_song_link { padding-right: 1em; }
 
-.rating_stats     { float: left; }
-.ratings_for_song { float: left; }
+.audio_player {
+  float: right;
+}
+
+.rating_stats {
+  float:         left;
+  padding-right: 1em;
+}
+
+.rating_stats td {
+  text-align: center;
+}
 
 .song_normalized_rating_value_avg {
-  /* XXX */
-  font-size: 4em;
+  border-style: solid;
+  border-width: 0.1em;
+  font-size:    3em;
+}
+
+.song_rating_value_avg {
+  font-size: 1.5em;
 }
 
 /* song ratings by users */
 
-.song_rating_by_user_normalized {
-  /* XXX */
+.ratings_for_song {
+  float: left;
+  max-width: 50%;
+}
+
+.user_song_rating {
+  border-style: solid;
+
+  padding-left:  0.2em;
+  padding-right: 0.2em;
+}
+
+.song_rating_normalized_value_value {
+  font-size: 2.2em;
+}
+
+.song_rating_value_value {
+  font-size:  1.5em;
+  text-align: center;
 }
 
 .user_name {
-  /* XXX */
+  font-size: 1.2em;
+  float: right;
 }
 
 .comment {
+  text-align: justify;
   /* XXX */
 }
 
@@ -1382,8 +1417,8 @@ EOF
 
     my $page = audio_player($song_id)
                . h1($title)
-               . div({ -class => 'rating_stats'     }, $rating_stats    )
-               . div({ -class => 'ratings_for_song' }, $ratings_for_song)
+               . $rating_stats
+               . $ratings_for_song
                . $user_rating_correlations;
 
     query(q{ update listening_events
@@ -1635,9 +1670,9 @@ EOF
                 $listening_session_id,
                 $song_id);
 
-    table(
-      Tr([ map { tablerow_song_rating_by_user($_) }
-             @$song_ratings ]));
+    table({ -class => 'ratings_for_song' },
+          Tr([ map { tablerow_song_rating_by_user($_) }
+                 @$song_ratings ]));
 
   }
 
@@ -1686,25 +1721,24 @@ EOF
     my $color_for_normalized_value = color_for_rating_value($normalized_value);
 
     my $normalized_rating_html
-      = div({ -class => 'song_rating_by_user_normalized',
-              -style => "background-color: $color_for_normalized_value;" },
-            sprintf('%.1f',
-                    $song_rating->{song_rating_normalized_value_value}));
+      = span({ -class => 'song_rating_normalized_value_value' },
+             sprintf('%.1f',
+                     $song_rating->{song_rating_normalized_value_value}));
 
     my $rating_html
-      = div(sprintf('(%s)', $song_rating->{song_rating_value_value}));
+      = span({ -class => 'song_rating_value_value' },
+             sprintf('(%s)', $song_rating->{song_rating_value_value}));
 
-    my $user_name_html = div({ -class => 'user_name' },
-                             $song_rating->{user_name});
+    my $user_name_html = span({ -class => 'user_name' },
+                              $song_rating->{user_name});
 
-    my $song_rating_comment_html
-      = div({ -class => 'comment' },
-            $song_rating->{song_rating_comment});
-
-    td($normalized_rating_html,
-       $rating_html)
-    . td($user_name_html,
-         $song_rating_comment_html);
+    td(div({ -class => 'user_song_rating',
+             -style => "background-color: $color_for_normalized_value;" },
+           $normalized_rating_html,
+           $rating_html,
+           $user_name_html),
+       div({ -class => 'comment' },
+           $song_rating->{song_rating_comment}));
   }
 
   sub table_song_rating_stats {
@@ -1720,18 +1754,19 @@ EOF
     my $color_for_normalized_value
       = color_for_rating_value($stats->{song_normalized_rating_value_avg});
 
-    table(
-      Tr([ td({ -class => 'song_normalized_rating_value_avg',
-                -style => "background-color: $color_for_normalized_value;" },
-              sprintf('%.3f', $stats->{song_normalized_rating_value_avg})),
+    table({ -class => 'rating_stats' },
+          Tr([ td({ -class => 'song_normalized_rating_value_avg',
+                    -style => "background-color: $color_for_normalized_value;" },
+                  sprintf('%.2f', $stats->{song_normalized_rating_value_avg})),
 
-           td(sprintf('(%.3f)', $stats->{song_rating_value_avg})),
+               td({ -class => 'song_rating_value_avg' },
+                  sprintf('(%.2f)', $stats->{song_rating_value_avg})),
 
-           td(sprintf('norm. &sigma; = %.3f',
-                      $stats->{song_normalized_rating_value_stdev})),
+               td(sprintf('norm. &sigma; = %.2f',
+                          $stats->{song_normalized_rating_value_stdev})),
 
-           td(sprintf('(&sigma; = %.3f)',
-                      $stats->{song_rating_value_stdev})) ]));
+               td(sprintf('(&sigma; = %.2f)',
+                          $stats->{song_rating_value_stdev})) ]));
   }
 
   sub table_user_rating_correlations {
@@ -1800,13 +1835,14 @@ EOF
     my ($song_id) = @_;
     my $playback_link = link_to_song_playback($song_id);
 
-    div(
-      audio({ -autoplay => undef, -controls => undef },
-            source({ -src  => $playback_link,
-                     -type => 'audio/mpeg' }),
-            embed({ -src => $playback_link }))
-      . sprintf('(%s)', a({ -href => link_to_song_playback($song_id) },
-                          'mp3')));
+    div({ -class => 'audio_player' },
+        audio({ -autoplay => undef, -controls => undef },
+              source({ -src  => $playback_link,
+                       -type => 'audio/mpeg' }),
+              embed({ -src => $playback_link })),
+        div({ -style => 'text-align: right;' },
+            sprintf('(%s)', a({ -href => link_to_song_playback($song_id) },
+                              'mp3'))));
   }
 
   sub color_for_an_interval {
