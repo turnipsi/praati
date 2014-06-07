@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.36 2014/06/06 21:00:00 je Exp $
+# $Id: Praati.pm,v 1.37 2014/06/07 19:40:42 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1221,8 +1221,14 @@ package Praati::View {
 .user_song_rating {
   border-style: solid;
 
-  padding-left:  0.2em;
-  padding-right: 0.2em;
+  margin:  0;
+  padding: 0;
+}
+
+.user_song_rating_value_and_name {
+  margin: 0;
+  padding-left:  0.1em;
+  padding-right: 0.1em;
 }
 
 .song_rating_normalized_value_value {
@@ -1240,8 +1246,12 @@ package Praati::View {
 }
 
 .comment {
-  text-align: justify;
-  /* XXX */
+  margin:  0;
+
+  padding-bottom: 0.2em;
+  padding-left:   1em;
+  padding-right:  1em;
+  padding-top:    0.2em;
 }
 
 EOF
@@ -1693,7 +1703,8 @@ EOF
     my $normalized_value
       = $song_with_rating->{song_rating_normalized_value_value};
 
-    my $color_for_normalized_value = color_for_rating_value($normalized_value);
+    my $color_for_normalized_value = color_for_rating_value($normalized_value,
+                                                            1.0);
     my $normalized_value_string
       = $normalized_value ? sprintf('%.1f', $normalized_value)
           : '&mdash;';
@@ -1718,7 +1729,11 @@ EOF
     my ($song_rating) = @_;
 
     my $normalized_value = $song_rating->{song_rating_normalized_value_value};
-    my $color_for_normalized_value = color_for_rating_value($normalized_value);
+    my $color_for_normalized_value = color_for_rating_value($normalized_value,
+                                                            1.0);
+
+    my $light_color_for_normalized_value
+      = color_for_rating_value($normalized_value, 0.5);
 
     my $normalized_rating_html
       = span({ -class => 'song_rating_normalized_value_value' },
@@ -1732,13 +1747,21 @@ EOF
     my $user_name_html = span({ -class => 'user_name' },
                               $song_rating->{user_name});
 
-    td(div({ -class => 'user_song_rating',
+    my $comment_div
+      = $song_rating->{song_rating_comment} =~ /\S+/
+          ? div({ -class => 'comment',
+                  -style =>
+                    "background-color: $light_color_for_normalized_value;" },
+                $song_rating->{song_rating_comment})
+          : '';
+
+    td({ -class => 'user_song_rating' },
+       div({ -class => 'user_song_rating_value_and_name',
              -style => "background-color: $color_for_normalized_value;" },
            $normalized_rating_html,
            $rating_html,
            $user_name_html),
-       div({ -class => 'comment' },
-           $song_rating->{song_rating_comment}));
+       $comment_div);
   }
 
   sub table_song_rating_stats {
@@ -1752,7 +1775,8 @@ EOF
                    $song_id);
 
     my $color_for_normalized_value
-      = color_for_rating_value($stats->{song_normalized_rating_value_avg});
+      = color_for_rating_value($stats->{song_normalized_rating_value_avg},
+                               1.0);
 
     table({ -class => 'rating_stats' },
           Tr([ td({ -class => 'song_normalized_rating_value_avg',
@@ -1797,6 +1821,7 @@ EOF
       my $correlation_color
         = color_for_an_interval($correlation->{normalized_rating_correlation},
                                 -1.0,
+                                1.0,
                                 1.0);
 
       $table[ $i ][ $j ]
@@ -1846,7 +1871,7 @@ EOF
   }
 
   sub color_for_an_interval {
-    my ($value, $min, $max) = @_;
+    my ($value, $min, $max, $tint) = @_;
 
     confess('minimum and maximum are the same') if $min == $max;
 
@@ -1860,21 +1885,25 @@ EOF
       $value = $min;
     }
 
-    my $green = int(255.0 * (($value - $min) / ($max - $min)));
+    my $green = 255.0 * (($value - $min) / ($max - $min));
 
-    my $red  = int(255.0 - $green);
-    my $blue = 96;
+    my $red  = 255.0 - $green;
+    my $blue = 96.0;
 
-    sprintf('#%02x%02x%02x', $red, $green, $blue);
+    ($red, $green, $blue) = map { 255.0 - $tint * (255.0 - $_) }
+                              ($red, $green, $blue);
+
+    sprintf('#%02x%02x%02x', int($red), int($green), int($blue));
   }
 
   sub color_for_rating_value {
-    my ($rating_value) = @_;
+    my ($rating_value, $tint) = @_;
     return '#808080' unless defined $rating_value;
 
     color_for_an_interval($rating_value,
                           0,
-                          Praati::Constants::MAX_SONG_RATING);
+                          Praati::Constants::MAX_SONG_RATING,
+                          $tint);
   }
 
   sub get_userlist_for_correlations {
