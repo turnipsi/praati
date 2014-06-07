@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.37 2014/06/07 19:40:42 je Exp $
+# $Id: Praati.pm,v 1.38 2014/06/07 21:45:10 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1213,9 +1213,15 @@ package Praati::View {
 
 /* song ratings by users */
 
-.ratings_for_song {
-  float: left;
-  max-width: 50%;
+div.ratings_for_song {
+  float:         left;
+  width:         50%;
+  padding-right: 1em;
+}
+
+table.ratings_for_song {
+  border-collapse: collapse;
+  width:           100%;
 }
 
 .user_song_rating {
@@ -1254,6 +1260,18 @@ package Praati::View {
   padding-top:    0.2em;
 }
 
+.user_rating_correlations {
+  border-collapse: collapse;
+}
+
+.user_rating_correlations td {
+  border-style: solid;
+  border-width: 0.1em;
+  padding:      0.2em;
+  text-align:   center;
+}
+
+.no_correlation { background-color: #808080; }
 EOF
   }
 
@@ -1680,10 +1698,10 @@ EOF
                 $listening_session_id,
                 $song_id);
 
-    table({ -class => 'ratings_for_song' },
-          Tr([ map { tablerow_song_rating_by_user($_) }
-                 @$song_ratings ]));
-
+    div({ -class => 'ratings_for_song' },
+        table({ -class => 'ratings_for_song' },
+              Tr([ map { tablerow_song_rating_by_user($_) }
+                     @$song_ratings ])));
   }
 
   sub tablerow_edit_song_rating_by_user {
@@ -1810,8 +1828,8 @@ EOF
     my @table;
 
     foreach (0 .. $#userlist) {
-      $table[ 0      ][ $_ + 1 ] = $username_short_forms{ $userlist[$_] };
-      $table[ $_ + 1 ][ 0      ] = $username_short_forms{ $userlist[$_] };
+      $table[ 0      ][ $_ + 1 ] = td($username_short_forms{ $userlist[$_] });
+      $table[ $_ + 1 ][ 0      ] = td($username_short_forms{ $userlist[$_] });
     }
 
     foreach my $correlation (@$correlations) {
@@ -1825,13 +1843,18 @@ EOF
                                 1.0);
 
       $table[ $i ][ $j ]
-        = div({ -style => "background-color: $correlation_color;" },
-              sprintf('%.2f', $correlation->{normalized_rating_correlation}));
+        = td({ -style => "background-color: $correlation_color;" },
+             sprintf('%.2f', $correlation->{normalized_rating_correlation}));
     }
 
-    table(Tr([ map {
+    my $empty_cell = td({ -class => 'no_correlation' },
+                        '&mdash;');
+
+    table({ -class => 'user_rating_correlations' },
+          Tr([ map {
                  my $i = $_;
-                 td([ map { $table[$i][$_] } (0 .. scalar(@userlist)) ])
+                 concat(map { $table[$i][$_] // $empty_cell }
+                          (0 .. scalar(@userlist)));
                } (0 .. scalar(@userlist))]));
   }
 
