@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.38 2014/06/07 21:45:10 je Exp $
+# $Id: Praati.pm,v 1.39 2014/06/09 20:21:07 je Exp $
 
 # use diagnostics;
 use strict;
@@ -334,6 +334,18 @@ package Praati::Model {
             on delete cascade
       );
 
+      create table if not exists user_rating_correlations_cache (
+        user_rating_correlation_cache_id integer primary key not null,
+        listening_session_id integer not null
+          references listening_sessions(listening_session_id),
+        up_to_event_number integer not null,
+        user_a_id          integer not null references users(user_id),
+        user_b_id          integer not null references users(user_id),
+
+        rating_correlation            decimal(5) not null,
+        normalized_rating_correlation decimal(5) not null
+      );
+
       -- create views
 
       create view if not exists songinfos
@@ -451,10 +463,10 @@ package Praati::Model {
                         user_b_id;
 
       create view if not exists user_rating_correlations_with_users
-        as select user_rating_correlations.*,
+        as select user_rating_correlations_cache.*,
                   users_a.user_name as user_a_user_name,
                   users_b.user_name as user_b_user_name
-             from user_rating_correlations
+             from user_rating_correlations_cache
                join users as users_a
                  cross join users as users_b
                where user_a_id = users_a.user_id
@@ -622,8 +634,9 @@ package Praati::Model {
   sub debug_query {
     # use Data::Dumper;
     # warn Dumper(
-    #        records(q{ select * from user_rating_correlations
-    #                     order by up_to_event_number; }));
+    #        records(q{ select * from user_rating_correlations_with_users
+    #                     where listening_session_id = 4
+    #                       and   up_to_event_number = 7; }));
   }
 
   #
@@ -942,6 +955,24 @@ package Praati::Model {
                     $song_pos);
 
       }
+
+      query(q{
+              insert into user_rating_correlations_cache
+                  (listening_session_id,
+                   up_to_event_number,
+                   user_a_id,
+                   user_b_id,
+                   rating_correlation,
+                   normalized_rating_correlation)
+                select listening_session_id,
+                       up_to_event_number,
+                       user_a_id,
+                       user_b_id,
+                       rating_correlation,
+                       normalized_rating_correlation
+                  from user_rating_correlations
+                    where listening_session_id = ?; },
+            $listening_session_id);
     });
 
     $listening_session_id;
@@ -1816,7 +1847,7 @@ EOF
     my $correlations
       = records(q{ select * from user_rating_correlations_with_users
                      where listening_session_id = ?
-                       and up_to_event_number = ?; },
+                       and   up_to_event_number = ?; },
                 $listening_session_id,
                 $event_number);
 
