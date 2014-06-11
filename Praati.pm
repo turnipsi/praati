@@ -1,5 +1,5 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.39 2014/06/09 20:21:07 je Exp $
+# $Id: Praati.pm,v 1.40 2014/06/11 18:51:16 je Exp $
 
 # use diagnostics;
 use strict;
@@ -1791,17 +1791,17 @@ EOF
 
     my $rating_html
       = span({ -class => 'song_rating_value_value' },
-             sprintf('(%s)', $song_rating->{song_rating_value_value}));
+             sprintf('(%.1f)', $song_rating->{song_rating_value_value}));
 
     my $user_name_html = span({ -class => 'user_name' },
-                              $song_rating->{user_name});
+                              e($song_rating->{user_name}));
 
     my $comment_div
       = $song_rating->{song_rating_comment} =~ /\S+/
           ? div({ -class => 'comment',
                   -style =>
                     "background-color: $light_color_for_normalized_value;" },
-                $song_rating->{song_rating_comment})
+                e($song_rating->{song_rating_comment}))
           : '';
 
     td({ -class => 'user_song_rating' },
