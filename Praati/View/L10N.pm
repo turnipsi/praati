@@ -1,5 +1,7 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: L10N.pm,v 1.11 2014/06/04 19:12:01 je Exp $
+# $Id: L10N.pm,v 1.12 2014/06/21 08:08:12 je Exp $
+#
+# The author disclaims copyright to this source code.
 
 use strict;
 use warnings FATAL => qw(all);

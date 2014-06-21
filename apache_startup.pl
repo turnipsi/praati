@@ -1,5 +1,7 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: apache_startup.pl,v 1.6 2014/06/03 19:22:34 je Exp $
+# $Id: apache_startup.pl,v 1.7 2014/06/21 08:08:09 je Exp $
+#
+# The author disclaims copyright to this source code.
 
 # this code will run as root!
 

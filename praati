@@ -1,6 +1,8 @@
 #!/usr/bin/perl -T
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: praati,v 1.126 2014/06/01 08:01:13 je Exp $
+# $Id: praati,v 1.127 2014/06/21 08:08:09 je Exp $
+#
+# The author disclaims copyright to this source code.
 
 =pod
 

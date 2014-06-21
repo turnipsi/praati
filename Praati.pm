@@ -1,5 +1,7 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: Praati.pm,v 1.40 2014/06/11 18:51:16 je Exp $
+# $Id: Praati.pm,v 1.41 2014/06/21 08:08:09 je Exp $
+#
+# The author disclaims copyright to this source code.
 
 # use diagnostics;
 use strict;
