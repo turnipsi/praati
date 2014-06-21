@@ -24,7 +24,7 @@ databases/p5-DBI
 
 =item *
 
-devel/p5-BSD-arc4random
+devel/p5-BSD-arc4random (needs update on OpenBSD 5.5)
 
 =item *
 
