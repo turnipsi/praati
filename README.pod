@@ -1,252 +1,37 @@
 =pod
 
-=head1 Dependencies on different operating systems
-
-=head2 OpenBSD
-
-B<XXX should check and add p5-Test-Deep !!! XXX>
-
-Required dependencies in OpenBSD (tested with OpenBSD 5.5):
-
-=over
-
-=item *
-
-audio/p5-MP3-Tag
-
-=item *
-
-databases/p5-DBD-SQLite
-
-=item *
-
-databases/p5-DBI
-
-=item *
-
-devel/p5-BSD-arc4random (needs update on OpenBSD 5.5)
-
-=item *
-
-devel/p5-List-MoreUtils
-
-=item *
-
-mail/p5-Email-Valid
-
-=item *
-
-math/p5-Statistics-Descriptive
-
-=item *
-
-security/p5-Crypt-SaltedHash
-
-=item *
-
-security/p5-Digest-SHA1
-
-=item *
-
-www/p5-URI
-
-=back
-
-Recommended dependencies (perhaps even required currently, because not tested
-without):
-
-=over
-
-=item *
-
-www/mod_perl
-
-=back
-
-Testing code needs:
-
-=over
-
-=item *
-
-devel/p5-Test-WWW-Mechanize
-
-=item *
-
-www/p5-HTML-SimpleParse
-
-=item *
-
-www/p5-HTML-TableContentParser
-
-=back
-
-=head2 NetBSD
-
-Required dependencies in NetBSD (not tested yet, but should be):
-
-=over
-
-=item *
-
-audio/p5-MP3-Tag
-
-=item *
-
-databases/p5-DBD-SQLite
-
-=item *
-
-databases/p5-DBI
-
-=item *
-
-devel/p5-List-MoreUtils
-
-=item *
-
-lang/perl5
-
-=item *
-
-mail/p5-Email-Valid
-
-=item *
-
-math/p5-Statistics-Descriptive
-
-=item *
-
-security/p5-BSD-arc4random
-
-=item *
-
-security/p5-Crypt-SaltedHash B<IS MISSING!>
-
-=item *
-
-security/p5-Digest-SHA1
-
-=item *
-
-www/p5-URI
-
-=back
-
-Recommended dependencies (perhaps even required currently, because not tested
-without):
-
-=over
-
-=item *
-
-www/ap-perl
-
-=item *
-
-www/apache
-
-=back
-
-Testing code needs:
-
-=over
-
-=item *
-
-wip/p5-HTML-TableContentParser (B<note wip/*!>)
-
-=item *
-
-www/p5-HTML-SimpleParse
-
-=item *
-
-www/p5-Test-WWW-Mechanize
-
-=back
-
-=head2 FreeBSD
-
-Required dependencies in FreeBSD (not tested yet, but should be):
-
-=over
-
-=item *
-
-audio/p5-MP3-Tag
-
-=item *
-
-databases/p5-DBD-SQLite
-
-=item *
-
-databases/p5-DBI
-
-=item *
-
-devel/p5-BSD-arc4random B<IS MISSING!>
-
-=item *
-
-lang/p5-List-MoreUtils
-
-=item *
-
-lang/perl5.18 (B<note!: should test with perl5.1{4,6,8} as well>)
-
-=item *
-
-mail/p5-Email-Valid
-
-=item *
-
-math/p5-Statistics-Descriptive
-
-=item *
-
-net/p5-URI
-
-=item *
-
-security/p5-Crypt-SaltedHash
-
-=item *
-
-security/p5-Digest-SHA1
-
-=back
-
-Recommended dependencies (perhaps even required currently, because not tested
-without):
-
-=over
-
-=item *
-
-www/apache22
-
-=item *
-
-www/mod_perl2
-
-=back
-
-Testing code needs:
-
-=over
-
-=item *
-
-devel/p5-Test-WWW-Mechanize
-
-=item *
-
-www/p5-HTML-TableContentParser
-
-=item *
-
-www/p5-HTML-SimpleParse
-
-=back
+=head1 Praati
+
+Praati is web software for criticizing and listening music within
+a small group of people.  Users may register themselves, listen some
+songs, and then rate them and add comments.  Once they have done,
+the songs can be listened to in some order (from the worst to the
+best, generally) and everyone's ratings and comments can be seen.
+The critics should rate and comment songs privately, in preparation
+for the final listening session that is intended to happen so that
+everyone will gather together for it.
+
+A kind of normalization is done for user ratings.  The user rating
+correlations is also calculated, so it can be seen how compatible
+different users music tastes are.  These are calculated cumulatively,
+so that only those songs that have been listened to are taken into
+account.
+
+Only mp3 files are supported.  This software has been developed and
+tested on OpenBSD 5.5 with its own Apache version (a fork of 1.3).
+It is probably possible to port it to other systems or Apache
+versions with only little work.
+
+There is no user manual, sorry.  Currently the user interface is
+in Finnish (but you may tweak it to English easily).  You have to
+figure out on your own how to install it and use it.  If you really
+need help, contact the author.
+
+This software has been written by Juha Erkkilä <je@turnipsi.no-ip.org>.
+Patches (portability, security, features, whatever) are mostly
+welcome.  This software is in public domain, meaning that the author
+disclaims copyright to the source code.
+
+Praati was very much inspired by Graati
+(L<https://github.com/starvinraven/graati>)
+by Esa Virtanen (but shares none of the code).
