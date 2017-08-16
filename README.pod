@@ -27,7 +27,7 @@ in Finnish (but you may tweak it to English easily).  You have to
 figure out on your own how to install it and use it.  If you really
 need help, contact the author.
 
-This software has been written by Juha Erkkilä <je@turnipsi.no-ip.org>.
+This software has been written by Juha Erkkila <je@turnipsi.no-ip.org>.
 Patches (portability, security, features, whatever) are mostly
 welcome.  This software is in public domain, meaning that the author
 disclaims copyright to the source code.
