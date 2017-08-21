@@ -26,7 +26,7 @@ use Praati::View::L10N;
 #
 
 package Praati::Config {
-  our $WWW_dir = '/'; # XXX in OpenBSD Apache chroot only...
+  our $WWW_dir = '/'; # XXX in OpenBSD httpd chroot only...
 
   our $DB_dir       = 'db';
   our $DB_file_path = "${WWW_dir}/${DB_dir}/praati.sqlite3";

@@ -18,9 +18,8 @@ so that only those songs that have been listened to are taken into
 account.
 
 Only mp3 files are supported.  This software has been developed and
-tested on OpenBSD 5.5 with its own Apache version (a fork of 1.3).
-It is probably possible to port it to other systems or Apache
-versions with only little work.
+tested on OpenBSD 6.2 with its own httpd.  It is probably possible
+to port it to other systems and web servers with only little work.
 
 There is no user manual, sorry.  Currently the user interface is
 in Finnish (but you may tweak it to English easily).  You have to

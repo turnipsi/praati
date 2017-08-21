@@ -15,39 +15,6 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-=pod
-
-A sample Apache configuration:
-
-  PerlModule Apache::PerlRun
-  PerlTaintCheck On
-
-  <IfDefine PRAATI_DEBUG>
-    PerlModule CGI::Pretty
-    PerlSetEnv PRAATI_DEBUG 1
-  </IfDefine>
-
-  <IfDefine PRAATI_NYTPROF>
-    MaxClients 1
-    MaxRequestsPerChild 0
-    PerlModule Devel::NYTProf::Apache
-  </IfDefine>
-
-  # XXX Preload modules in a separate init script.
-  # XXX Hardcoded path, and this code will run as root!
-  PerlRequire /var/www/users/je/praati/apache_startup.pl
-
-  <Location /praati>
-    Options +ExecCGI
-    PerlHandler Apache::PerlRun
-    PerlSendHeader On
-    # XXX another hardcoded path
-    PerlSetEnv PERL5LIB /users/je/praati
-    SetHandler perl-script
-  </Directory>
-
-=cut
-
 # use diagnostics;
 use strict;
 use warnings FATAL => qw(all);
