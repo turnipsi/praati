@@ -1,5 +1,4 @@
 # -*- mode: perl; coding: iso-8859-1; -*-
-# $Id: L10N.pm,v 1.12 2014/06/21 08:08:12 je Exp $
 #
 # Copyright (c) 2014, 2017 Juha Erkkilä <je@turnipsi.no-ip.org>
 #
