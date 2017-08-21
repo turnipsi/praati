@@ -1,4 +1,4 @@
-# -*- mode: perl; coding: iso-8859-1; -*-
+# -*- mode: perl; coding: utf-8; -*-
 #
 # Copyright (c) 2014, 2017 Juha Erkkil√§ <je@turnipsi.no-ip.org>
 #
@@ -15,6 +15,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use strict;
+use utf8;
 use warnings FATAL => qw(all);
 
 use CGI;
@@ -41,46 +42,46 @@ package Praati::View::L10N::fi {
   use base qw(Praati::View::L10N);
 
   our %Lexicon = (
-    'Access unauthorized.' => 'P‰‰sy kielletty.',
-    'Unauthorized access'  => 'P‰‰sy kielletty',
-    'No such page'         => 'Etsim‰‰si sivua ei lˆydy',
-    'No such page.'        => 'Etsim‰‰si sivua ei lˆydy.',
+    'Access unauthorized.' => 'P√§√§sy kielletty.',
+    'Unauthorized access'  => 'P√§√§sy kielletty',
+    'No such page'         => 'Etsim√§√§si sivua ei l√∂ydy',
+    'No such page.'        => 'Etsim√§√§si sivua ei l√∂ydy.',
 
-    'Login'    => 'Kirjaudu sis‰‰n',
+    'Login'    => 'Kirjaudu sis√§√§n',
     'Logout'   => 'Kirjaudu ulos',
-    'Main'     => 'P‰‰sivu',
-    'New user' => 'Uusi k‰ytt‰j‰',
+    'Main'     => 'P√§√§sivu',
+    'New user' => 'Uusi k√§ytt√§j√§',
     'Panels'   => 'Raadit',
 
-    'The main page.' => 'P‰‰sivu.',
+    'The main page.' => 'P√§√§sivu.',
 
-    'Not logged in'           => 'Ei sis‰‰nkirjautuneena',
-    'You are not logged in.'  => 'Et ole sis‰‰nkirjautuneena.',
+    'Not logged in'           => 'Ei sis√§√§nkirjautuneena',
+    'You are not logged in.'  => 'Et ole sis√§√§nkirjautuneena.',
     'Logged out'              => 'Kirjauduttu ulos',
     'You are now logged out.' => 'Olet nyt kirjautunut ulos.',
     'Logout error'            => 'Uloskirjautumisvirhe',
     'Could not log out for some reason.'
-       => 'Uloskirjautuminen ei onnistunut jostain syyst‰.',
+       => 'Uloskirjautuminen ei onnistunut jostain syyst√§.',
 
     'Logged in as "[_1]" ([_2])'
-       => 'Olet kirjautuneena k‰ytt‰j‰n‰ [_1] ([_2])',
+       => 'Olet kirjautuneena k√§ytt√§j√§n√§ [_1] ([_2])',
 
-    'email address:'  => 's‰hkˆpostiosoite:',
+    'email address:'  => 's√§hk√∂postiosoite:',
     'name:'           => 'nimi:',
     'password:'       => 'salasana:',
     'password again:' => 'salasana uudestaan:',
-    'Create new user' => 'Luo uusi k‰ytt‰j‰',
+    'Create new user' => 'Luo uusi k√§ytt√§j√§',
 
     'Available panels'      => 'Valittavissa olevat raadit',
     'Available panels are:' => 'Valittavissa olevat raadit ovat:',
 
-    'This panel is "[_1]".' => 'T‰m‰ raati on "[_1]".',
+    'This panel is "[_1]".' => 'T√§m√§ raati on "[_1]".',
 
-    'User email address is not valid.' => 'S‰hkˆpostiosoite ei ole kelvollinen.',
-    'Email address is already reserved.' => 'S‰hkˆpostiosoite on jo varattu.',
-    'Username is already reserved.'      => 'K‰ytt‰j‰nimi on jo varattu.',
+    'User email address is not valid.' => 'S√§hk√∂postiosoite ei ole kelvollinen.',
+    'Email address is already reserved.' => 'S√§hk√∂postiosoite on jo varattu.',
+    'Username is already reserved.'      => 'K√§ytt√§j√§nimi on jo varattu.',
 
-    'Wrong username or password.' => 'V‰‰r‰ k‰ytt‰j‰nimi tai salasana.',
+    'Wrong username or password.' => 'V√§√§r√§ k√§ytt√§j√§nimi tai salasana.',
 
     'Rate songs for "[_1]"' => 'Arvostele laulut raadissa "[_1]"',
 
@@ -99,20 +100,20 @@ package Praati::View::L10N::fi {
 
     'Listening event for [_1]' => 'Kuuntelusessio laululle [_1]',
 
-    'User rating counts' => 'K‰ytt‰jien arvostelujen lukum‰‰r‰',
+    'User rating counts' => 'K√§ytt√§jien arvostelujen lukum√§√§r√§',
     'Playback events'    => 'Soittotapahtumat',
 
     'Save all' => 'Tallenna kaikki',
     'play'     => 'soita',
 
-    'user'         => 'k‰ytt‰j‰',
-    'rating count' => 'arvostelujen lukum‰‰r‰',
+    'user'         => 'k√§ytt√§j√§',
+    'rating count' => 'arvostelujen lukum√§√§r√§',
 
     'create a new listening session' => 'luo uusi kuuntelusessio',
     'rate'                           => 'arvostele',
 
     'To login, cookies must be accepted by the browser.'
-      => 'Kirjautuaksesi "keksien" t‰ytyy olla selaimessasi hyv‰ksyttyj‰.',
+      => 'Kirjautuaksesi "keksien" t√§ytyy olla selaimessasi hyv√§ksyttyj√§.',
 
     'Listening session name is missing.' => 'Kuuntelusession nimi puuttuu.',
     'Session type is missing.'           => 'Kuuntelusession tyyppi puuttuu.',
@@ -125,7 +126,7 @@ package Praati::View::L10N::fi {
        => 'Kuuntelusession yleiskatsaus sessiolle "[_1]".',
 
     'Password is missing.'    => 'Salasana puuttuu.',
-    'Passwords do not match.' => 'Salasanat eiv‰t t‰sm‰‰.',
+    'Passwords do not match.' => 'Salasanat eiv√§t t√§sm√§√§.',
   );
 }
 

@@ -1,4 +1,4 @@
-# -*- mode: perl; coding: iso-8859-1; -*-
+# -*- mode: perl; coding: utf-8; -*-
 #
 # Copyright (c) 2014, 2017 Juha Erkkilä <je@turnipsi.no-ip.org>
 #
@@ -20,6 +20,7 @@ use constant                ();
 use diagnostics             ();
 use overload                ();
 use strict                  ();
+use utf8                    ();
 use warnings                ();
 use BSD::arc4random         ();
 use CGI                     ();

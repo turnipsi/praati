@@ -1,4 +1,4 @@
-# -*- mode: perl; coding: iso-8859-1; -*-
+# -*- mode: perl; coding: utf-8; -*-
 #
 # Copyright (c) 2014, 2017 Juha Erkkilä <je@turnipsi.no-ip.org>
 #
@@ -16,6 +16,7 @@
 
 # use diagnostics;
 use strict;
+use utf8;
 use warnings FATAL => qw(all);
 
 use Praati::View::L10N;
