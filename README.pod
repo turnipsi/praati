@@ -28,8 +28,58 @@ need help, contact the author.
 
 This software has been written by Juha Erkkilä <je@turnipsi.no-ip.org>.
 Patches (portability, security, features, whatever) are mostly
-welcome.  This software is in public domain, meaning that the author
-disclaims copyright to the source code.
+welcome.
+
+Package dependencies for runtime:
+
+=over
+
+=item *
+p5-BSD-arc4random
+
+=item *
+p5-Crypt-SaltedHash
+
+=item *
+p5-DBD-SQLite
+
+=item *
+p5-DBI
+
+=item *
+p5-Digest-SHA1
+
+=item *
+p5-Email-Valid
+
+=item *
+p5-List-MoreUtils
+
+=item *
+p5-MP3-Tag
+
+=item *
+p5-Statistics-Descriptive
+
+=item *
+p5-URI
+
+=back
+
+Package dependencies for test-script:
+
+=over
+
+=item *
+p5-HTML-SimpleParse
+
+=item *
+p5-HTML-TableContentParser
+
+=item *
+p5-Test-WWW-Mechanize
+
+=back
 
 Praati was very much inspired by Graati
 (L<https://github.com/starvinraven/graati>)
