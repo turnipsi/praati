@@ -53,6 +53,9 @@ p5-Digest-SHA1
 p5-Email-Valid
 
 =item *
+p5-CGI-Fast
+
+=item *
 p5-List-MoreUtils
 
 =item *

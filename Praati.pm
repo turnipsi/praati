@@ -25,17 +25,19 @@ use Praati::View::L10N;
 # configurations
 #
 
-package Praati::Config {
-  our $WWW_dir = '/'; # XXX in OpenBSD httpd chroot only...
+BEGIN {
+  package Praati::Config {
+    # XXX should maybe read some configuration file?
+    my ($home) = ($ENV{HOME} =~ /(.*)/);	# cleanup data for -T
 
-  our $DB_dir       = 'db';
-  our $DB_file_path = "${WWW_dir}/${DB_dir}/praati.sqlite3";
-
-  our $Music_path = "${WWW_dir}/${DB_dir}/music";
-
-  our $User_session_hours = 12;
+    our $Praati_dir         = "${home}/.praati";
+    our $DB_dir             = "${Praati_dir}/db";
+    our $DB_file_path       = "${Praati_dir}/db/praati.sqlite3";
+    our $FCGI_socket_path   = '/var/www/run/praati/praati.sock';
+    our $Music_path         = "${Praati_dir}/db/music";
+    our $User_session_hours = 12;
+  }
 }
-
 
 #
 # constants
@@ -137,6 +139,7 @@ package Praati::Model {
   use Crypt::SaltedHash;
   use DBI;
   use Email::Valid;
+  use Errno;
   use File::Glob qw(bsd_glob);
   use Math::Trig;
   use Scalar::Util qw(blessed);
@@ -144,6 +147,13 @@ package Praati::Model {
   our $Db;
 
   sub init {
+    mkdir ${Praati::Config::Praati_dir}
+      or $!{EEXIST}
+      or confess("Could not create ${Praati::Config::Praati_dir}: $!");
+    mkdir ${Praati::Config::DB_dir}
+      or $!{EEXIST}
+      or confess("Could not create ${Praati::Config::DB_dir}: $!");
+
     setup_database(${Praati::Config::DB_file_path});
 
     open_db_connection(${Praati::Config::DB_file_path});
@@ -2158,8 +2168,9 @@ package Praati::Controller {
   Praati::View::L10N->import;
 
   use BSD::arc4random qw(arc4random_bytes);
-  use CGI qw(-any);
   use CGI::Carp;
+  use CGI::Fast socket_path => ${Praati::Config::FCGI_socket_path},
+                socket_perm => 0777;
   use List::MoreUtils qw(any);
   use Scalar::Util qw(blessed);
 
@@ -2176,7 +2187,7 @@ package Praati::Controller {
   }
 
   sub handle_query {
-    $Q = CGI->new;
+    $Q = CGI::Fast->new;
 
     eval {
       Praati::Model::init();
@@ -2205,7 +2216,7 @@ package Praati::Controller {
     eval { $fn->() };
     my $err = $@;
     if ($err) {
-      my $q = CGI->new;
+      my $q = CGI::Fast->new;
       print $q->header(),
             $q->pre($err);
     }
