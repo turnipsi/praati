@@ -2217,7 +2217,7 @@ package Praati::Controller {
     my $err = $@;
     if ($err) {
       my $q = CGI::Fast->new;
-      print $q->header(),
+      print $q->header(-charset => 'utf-8'),
             $q->pre($err);
     }
   }
@@ -2632,6 +2632,7 @@ package Praati::Controller::Response {
     my ($self, $q) = @_;
 
     my @header_args = (
+      -charset => 'utf-8',
       defined($self->cookie) ? (-cookie => $self->cookie) : (),
       defined($self->status) ? (-status => $self->status) : (),
       defined($self->type  ) ? (-type   => $self->type  ) : (),
