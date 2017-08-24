@@ -2181,18 +2181,22 @@ package Praati::Controller {
   our ($Q, $Session_user);
 
   sub main {
-    $ENV{PRAATI_DEBUG}
-      ? debugging_wrapper(\&handle_query)
-      : handle_query();
+    Praati::Model::init();
+    Praati::View::init();
+
+    while ($Q = CGI::Fast->new) {
+      eval {
+        $ENV{PRAATI_DEBUG}
+	  ? debugging_wrapper(\&handle_query)
+	  : handle_query();
+      };
+    }
+
+    Praati::Model::close_db_connection();
   }
 
   sub handle_query {
-    $Q = CGI::Fast->new;
-
     eval {
-      Praati::Model::init();
-      Praati::View::init();
-
       my $user_session_key = $Q->cookie('user_session_key');
       $Session_user = Praati::Model::find_session_user($user_session_key);
 
@@ -2200,8 +2204,6 @@ package Praati::Controller {
       $response->printout($Q);
     };
     my $error = $@;
-
-    Praati::Model::close_db_connection();
 
     if ($error) {
       confess($error);
