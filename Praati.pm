@@ -1171,6 +1171,7 @@ package Praati::View {
   Praati::Model->import;
   Praati::View::L10N->import;
 
+  use CGI ();
   use CGI::Carp qw(cluck);
   use List::MoreUtils qw(uniq);
   use Scalar::Util qw(blessed);
@@ -1180,13 +1181,14 @@ package Praati::View {
   our $Lh;
 
   BEGIN {
+    my @html_funcs = qw(audio
+			form
+                        source);
     my @query_methods = qw(a
-                           audio
                            div
                            embed
                            end_html
                            escapeHTML
-                           form
                            h1
                            h2
                            li
@@ -1197,7 +1199,6 @@ package Praati::View {
                            password_field
                            radio_group
                            Select
-                           source
                            span
                            start_html
                            submit
@@ -1207,6 +1208,13 @@ package Praati::View {
                            th
                            Tr
                            ul);
+
+    foreach my $tag (@html_funcs) {
+      no strict 'refs';
+      # XXX this uses a private interface in CGI.pm...
+      # XXX should probably migrate to HTML::Tiny some day...
+      *$tag = sub { CGI::_tag_func($tag, @_); };
+    }
 
     foreach my $method (@query_methods) {
       no strict 'refs';
@@ -2185,24 +2193,18 @@ package Praati::Controller {
 
     while ($Q = CGI::Fast->new) {
       eval { handle_query(); };
+      if ($@) { warn($@); }
     }
 
     Praati::Model::close_db_connection();
   }
 
   sub handle_query {
-    eval {
       my $user_session_key = $Q->cookie('user_session_key');
       $Session_user = Praati::Model::find_session_user($user_session_key);
 
       my $response = url_dispatch( $Q->path_info );
       $response->printout($Q);
-    };
-    my $error = $@;
-
-    if ($error) {
-      confess($error);
-    }
   }
 
   sub query_method {
