@@ -155,7 +155,6 @@ package Praati::Model {
     open_db_connection(${Praati::Config::DB_file_path});
 
     init_db_tables();
-    debug_query();
     expire_old_user_sessions();
 
     return;
@@ -649,14 +648,6 @@ package Praati::Model {
 
       confess($db_error);
     }
-  }
-
-  sub debug_query {
-    # use Data::Dumper;
-    # warn Dumper(
-    #        records(q{ select * from user_rating_correlations_with_users
-    #                     where listening_session_id = 4
-    #                       and   up_to_event_number = 7; }));
   }
 
   #
