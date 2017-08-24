@@ -2174,9 +2174,7 @@ package Praati::Controller {
   use List::MoreUtils qw(any);
   use Scalar::Util qw(blessed);
 
-  if ($ENV{PRAATI_DEBUG}) {
-    $CGI::Pretty::INDENT = ' ' x 2;
-  }
+  $CGI::Pretty::INDENT = ' ' x 2;
 
   our ($Q, $Session_user);
 
@@ -2185,11 +2183,7 @@ package Praati::Controller {
     Praati::View::init();
 
     while ($Q = CGI::Fast->new) {
-      eval {
-        $ENV{PRAATI_DEBUG}
-	  ? debugging_wrapper(\&handle_query)
-	  : handle_query();
-      };
+      eval { handle_query(); };
     }
 
     Praati::Model::close_db_connection();
@@ -2207,20 +2201,6 @@ package Praati::Controller {
 
     if ($error) {
       confess($error);
-    }
-  }
-
-  sub debugging_wrapper {
-    my ($fn) = @_;
-
-    warn 'Debugging has been turned on, stacktraces end up to the browser';
-
-    eval { $fn->() };
-    my $err = $@;
-    if ($err) {
-      my $q = CGI::Fast->new;
-      print $q->header(-charset => 'utf-8'),
-            $q->pre($err);
     }
   }
 
