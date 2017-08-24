@@ -2171,6 +2171,7 @@ package Praati::Controller {
   use CGI::Carp;
   use CGI::Fast socket_path => ${Praati::Config::FCGI_socket_path},
                 socket_perm => 0777;
+  use CGI::HTML::Functions;
   use List::MoreUtils qw(any);
   use Scalar::Util qw(blessed);
 
