@@ -30,11 +30,10 @@ BEGIN {
     # XXX should maybe read some configuration file?
     my ($home) = ($ENV{HOME} =~ /(.*)/);	# cleanup data for -T
 
-    our $Praati_dir         = "${home}/.praati";
-    our $DB_dir             = "${Praati_dir}/db";
-    our $DB_file_path       = "${Praati_dir}/db/praati.sqlite3";
+    our $DB_dir             = "${home}/praati-db";
+    our $DB_file_path       = "${DB_dir}/praati.sqlite3";
     our $FCGI_socket_path   = '/var/www/run/praati/praati.sock';
-    our $Music_path         = "${Praati_dir}/db/music";
+    our $Music_path         = "${DB_dir}/music";
     our $User_session_hours = 12;
   }
 }
@@ -147,9 +146,6 @@ package Praati::Model {
   our $Db;
 
   sub init {
-    mkdir ${Praati::Config::Praati_dir}
-      or $!{EEXIST}
-      or confess("Could not create ${Praati::Config::Praati_dir}: $!");
     mkdir ${Praati::Config::DB_dir}
       or $!{EEXIST}
       or confess("Could not create ${Praati::Config::DB_dir}: $!");
