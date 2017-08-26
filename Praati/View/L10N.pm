@@ -14,11 +14,12 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use feature qw(unicode_strings);
 use strict;
 use utf8;
 use warnings FATAL => qw(all);
 
-use CGI;
+use CGI (-utf8);
 use Locale::Maketext;
 
 package Praati::View::L10N {

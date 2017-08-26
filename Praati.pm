@@ -15,6 +15,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 # use diagnostics;
+use feature qw(unicode_strings);
 use strict;
 use utf8;
 use warnings FATAL => qw(all);
@@ -1158,7 +1159,7 @@ package Praati::View {
   Praati::Model->import;
   Praati::View::L10N->import;
 
-  use CGI ();
+  use CGI (-utf8);
   use CGI::Carp qw(cluck);
   use List::MoreUtils qw(uniq);
   use Scalar::Util qw(blessed);
@@ -2164,8 +2165,9 @@ package Praati::Controller {
 
   use BSD::arc4random qw(arc4random_bytes);
   use CGI::Carp;
-  use CGI::Fast socket_path => ${Praati::Config::FCGI_socket_path},
-                socket_perm => 0777;
+  use CGI::Fast (-utf8,
+                socket_path => ${Praati::Config::FCGI_socket_path},
+                socket_perm => 0777);
   use CGI::HTML::Functions;
   use List::MoreUtils qw(any);
   use Scalar::Util qw(blessed);
