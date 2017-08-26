@@ -194,6 +194,7 @@ package Praati::Model {
       PrintError                       => 0,
       RaiseError                       => 1,
       sqlite_allow_multiple_statements => 1,
+      sqlite_unicode                   => 1,
     );
     $Db = DBI->connect("dbi:SQLite:dbname=$db_file_path",
                        '',
