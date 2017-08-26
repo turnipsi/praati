@@ -996,6 +996,7 @@ package Praati::Model::Musicscan {
   Praati::Model->import;
 
   use CGI::Carp;
+  use Encode;
   use File::Basename;
   use File::Find;
   use MP3::Tag;
@@ -1026,8 +1027,9 @@ package Praati::Model::Musicscan {
     MP3::Tag->config(decode_encoding_v2 => 'utf-8');
 
     foreach my $mp3_filepath (@mp3_filepaths) {
-      my $mp3tag = MP3::Tag->new($mp3_filepath);
-      add_song($sth, $panel_id, $mp3_filepath, $mp3tag);
+      my $mp3_filepath_utf8 = Encode::decode_utf8($mp3_filepath);
+      my $mp3tag = MP3::Tag->new($mp3_filepath_utf8);
+      add_song($sth, $panel_id, $mp3_filepath_utf8, $mp3tag);
     }
   }
 
