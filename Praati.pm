@@ -29,7 +29,7 @@ use Praati::View::L10N;
 BEGIN {
   package Praati::Config {
     # XXX should maybe read some configuration file?
-    my ($home) = ($ENV{HOME} =~ /(.*)/);	# cleanup data for -T
+    my ($home) = ($ENV{HOME} =~ /(.*)/);        # cleanup data for -T
 
     our $DB_dir             = "${home}/praati-db";
     our $DB_file_path       = "${DB_dir}/praati.sqlite3";
@@ -1027,7 +1027,15 @@ package Praati::Model::Musicscan {
     MP3::Tag->config(decode_encoding_v2 => 'utf-8');
 
     foreach my $mp3_filepath (@mp3_filepaths) {
-      my $mp3_filepath_utf8 = Encode::decode_utf8($mp3_filepath);
+      my $mp3_filepath_utf8;
+      eval {
+        $mp3_filepath_utf8 = Encode::decode_utf8($mp3_filepath,
+                                                 Encode::FB_CROAK);
+      };
+      if ($@) {
+        croak("MP3 filename '$mp3_filepath' is not a valid utf8-string: $@");
+      }
+
       my $mp3tag = MP3::Tag->new($mp3_filepath_utf8);
       add_song($sth, $panel_id, $mp3_filepath_utf8, $mp3tag);
     }
@@ -1176,7 +1184,7 @@ package Praati::View {
 
   BEGIN {
     my @html_funcs = qw(audio
-			form
+                        form
                         source);
     my @query_methods = qw(a
                            div
