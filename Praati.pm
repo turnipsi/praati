@@ -1022,6 +1022,9 @@ package Praati::Model::Musicscan {
                                  panel_id)
             values (?, ?, ?, ?, ?, ?, ?); });
 
+    MP3::Tag->config(decode_encoding_v1 => 'utf-8');
+    MP3::Tag->config(decode_encoding_v2 => 'utf-8');
+
     foreach my $mp3_filepath (@mp3_filepaths) {
       my $mp3tag = MP3::Tag->new($mp3_filepath);
       add_song($sth, $panel_id, $mp3_filepath, $mp3tag);
