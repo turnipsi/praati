@@ -1688,7 +1688,6 @@ EOF
     my ($album, $panel_id, $user_id) = @_;
 
     my $songs = records(q{select * from songinfos
-
                             cross join users
                             left outer join song_ratings_with_normalized_values
                               using (panel_id, song_id, user_id)
@@ -1700,7 +1699,17 @@ EOF
                         $panel_id,
                         $user_id);
 
-    my @tablerows = map { tablerow_edit_song_rating_by_user($_) } @$songs;
+    my $artist_count
+      = one_value(q{
+                    select count(distinct artist_id) from songs_in_panels
+                      join songs using (song_id)
+                    where panel_id = ?; },
+                  $panel_id);
+    my $show_artist_name = ($artist_count > 1);
+
+    my @tablerows = map {
+      tablerow_edit_song_rating_by_user($_, $show_artist_name)
+    } @$songs;
 
     concat( table( Tr(\@tablerows) ) );
   }
@@ -1770,7 +1779,7 @@ EOF
   }
 
   sub tablerow_edit_song_rating_by_user {
-    my ($song_with_rating) = @_;
+    my ($song_with_rating, $show_artist_name) = @_;
 
     my ($rating_form_id, $comment_form_id)
       = map { make_form_id(songs => $song_with_rating->{song_id}, $_) }
@@ -1796,7 +1805,7 @@ EOF
       = a({ -href => link_to_song_playback($song_with_rating->{song_id}) },
           t('play'));
 
-    td([ e($song_with_rating->{artist_name}),
+    td([ $show_artist_name ? e($song_with_rating->{artist_name}) : (),
          div({ -class => 'song_name_in_edit_song_rating' },
              e($song_with_rating->{song_name})),
          $song_playback_link,
