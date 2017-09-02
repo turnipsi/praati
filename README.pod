@@ -34,7 +34,7 @@ welcome.
 
 Here are installation instructions for OpenBSD 6.2 (IN PROGRESS).
 
-Package dependencies for runtime, install these packages:
+Install these packages that are runtime dependencies:
 
 =over
 
@@ -88,21 +88,49 @@ p5-Test-WWW-Mechanize
 
 =back
 
+Create user for C<praati>:
+
+    doas useradd -L daemon -c 'Praati user' -s /sbin/nologin \
+      -d /var/db/praati -g =uid -m _praati
+
+Setup C</var/www/run/praati> for FastCGI socket:
+
+    doas install -d -o _praati -g _praati -m 755 /var/www/run/praati
+
+Setup C</etc/rc.d/praati> like this:
+
+    #!/bin/sh
+
+    daemon="/usr/local/bin/praati"
+    daemon_user="_praati"
+    # XXX stop does not work
+    pexp="/usr/bin/perl -T /usr/local/bin/praati"
+
+    . /etc/rc.d/rc.subr
+
+    rc_bg=YES
+    rc_reload=NO
+
+    rc_cmd $1
+
+Set permissions for C</etc/rc.d/praati>:
+
+    doas chmod 755 /etc/rc.d/praati
+
+Modify C</etc/rc.conf.local> to contain the following:
+
+    pkg_scripts="praati"
+
 Setup C</etc/httpd.conf> like this:
 
-    server "praati.example.com" {
-	    listen on * tls port 443
-	    root "/praati-static"	# optional
-
-	    tls certificate "/etc/ssl/praati/praati.example.com.crt"
-	    tls key "/etc/ssl/praati/praati.example.com.key"
+    server "praati.example.org" {
+	    listen on * port 80
 
 	    location "/praati/*" {
 		    root strip 1
 		    fastcgi socket "/run/praati/praati.sock"
 	    }
     }
-
 
 Praati was very much inspired by Graati
 (L<https://github.com/starvinraven/graati>)
