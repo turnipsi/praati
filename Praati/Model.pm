@@ -56,7 +56,6 @@ package Praati::Model {
     open_db_connection(${Praati::Config::DB_file_path});
 
     init_db_tables();
-    expire_old_user_sessions();
 
     return;
   }

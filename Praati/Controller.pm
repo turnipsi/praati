@@ -54,7 +54,10 @@ package Praati::Controller {
     Praati::View::init();
 
     while ($Q = CGI::Fast->new) {
-      eval { handle_query(); };
+      eval {
+        Praati::Model::expire_old_user_sessions();
+        handle_query();
+      };
       if ($@) { warn($@); }
     }
 
