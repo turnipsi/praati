@@ -20,7 +20,7 @@ use strict;
 use utf8;
 use warnings FATAL => qw(all);
 
-use Praati;
+use Praati::Controller;
 
 package main {
   Praati::Controller::main();

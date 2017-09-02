@@ -26,7 +26,7 @@ package Praati::View::L10N {
   use base qw(Locale::Maketext);
 
   use Exporter qw(import);
-  our @EXPORT = qw(t);
+  BEGIN { our @EXPORT_OK = qw(t); }
 
   our $Lh;
 
