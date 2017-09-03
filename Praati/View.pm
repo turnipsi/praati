@@ -648,8 +648,10 @@ EOF
       = song_rating_choice($rating_form_id,
                            $song_with_rating->{song_rating_value_value});
     my $comment
-      = textfield($comment_form_id,
-                  $song_with_rating->{song_rating_comment} // '');
+      = textfield(-name      => $comment_form_id,
+                  -size      => 60,
+                  -maxlength => 900,
+                  -value     => $song_with_rating->{song_rating_comment} // '');
 
     my $normalized_value
       = $song_with_rating->{song_rating_normalized_value_value};
