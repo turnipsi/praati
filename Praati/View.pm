@@ -553,19 +553,24 @@ EOF
                         $panel_id,
                         $user_id);
 
+    my $show_artist_name = !is_panel_single_artist($panel_id);
+    my @tablerows = map {
+      tablerow_edit_song_rating_by_user($_, $show_artist_name)
+    } @$songs;
+
+    concat( table( Tr(\@tablerows) ) );
+  }
+
+  sub is_panel_single_artist {
+    my ($panel_id) = @_;
     my $artist_count
       = one_value(q{
                     select count(distinct artist_id) from songs_in_panels
                       join songs using (song_id)
                     where panel_id = ?; },
                   $panel_id);
-    my $show_artist_name = ($artist_count > 1);
 
-    my @tablerows = map {
-      tablerow_edit_song_rating_by_user($_, $show_artist_name)
-    } @$songs;
-
-    concat( table( Tr(\@tablerows) ) );
+    ($artist_count == 1);
   }
 
   sub table_listening_events {
@@ -1022,10 +1027,18 @@ EOF
               '>')
           : '';
 
-    sprintf('%s%d. %s: %s%s',
+    my $panel_id
+      = one_value(q{ select panel_id from listening_sessions where
+                       listening_session_id = ?; },
+                  $listening_session_id);
+    my $show_artist_name = !is_panel_single_artist($panel_id);
+
+    sprintf('%s%d. %s %s%s',
             $previous_link_html,
             e($event_and_song->{song_position}),
-            e($event_and_song->{artist_name}),
+            ($show_artist_name
+               ? e($event_and_song->{artist_name}).':'
+               : ''),
             e($event_and_song->{song_name}),
             $next_link_html);
   }
