@@ -42,6 +42,7 @@ package Praati::Controller {
                 socket_path => ${Praati::Config::FCGI_socket_path},
                 socket_perm => 0777);
   use CGI::HTML::Functions;
+  use JSON::XS;
   use List::MoreUtils qw(any);
   use Scalar::Util qw(blessed);
 
@@ -65,11 +66,11 @@ package Praati::Controller {
   }
 
   sub handle_query {
-      my $user_session_key = $Q->cookie('user_session_key');
-      $Session_user = Praati::Model::find_session_user($user_session_key);
+    my $user_session_key = $Q->cookie('user_session_key');
+    $Session_user = Praati::Model::find_session_user($user_session_key);
 
-      my $response = url_dispatch( $Q->path_info );
-      $response->printout($Q);
+    my $response = url_dispatch( $Q->path_info );
+    $response->printout($Q);
   }
 
   sub query_method {
@@ -144,6 +145,14 @@ package Praati::Controller {
             panel_ratings_by_user_controller();
           }
         :
+      m|^/panels/send_ratings$|
+        ? do {
+            restrict_to_roles( qw(admin critic) );
+            my $p = eval { panel_async_update_panel_ratings(); };
+            if ($@) { Praati::Error::async_request_error($@); }
+            $p;
+          }
+        :
       m|^/song/play$|
         ? do {
             restrict_to_roles( qw(admin critic) );
@@ -156,6 +165,9 @@ package Praati::Controller {
 
     if ($err) {
       if (blessed($err)) {
+        return async_request_error_controller($err)
+          if $err->type eq 'async request error';
+
         return no_such_page_controller()
           if $err->type eq 'no such page';
 
@@ -415,21 +427,28 @@ package Praati::Controller {
     Praati::View::page_new_user($errors);
   }
 
+  sub async_request_error_controller {
+    my ($err) = @_;
+    warn("async request error: $err");
+    my $json = encode_json({ errors => { '*' => [ 'async error' ] }});
+    response(page => $json, status => 500);
+  }
+
   sub no_such_page_controller {
     response(page   => Praati::View::page_no_such_page(),
              status => 404);
   }
 
-  sub panel_ratings_by_user_controller {
+  sub update_panel_ratings_by_user {
+    my ($p, $panel_id, $update) = @_;
     my $panel = one_record_or_no_such_page(q{ select * from panels
                                                 where panel_id = ?; },
-                                           $Q->url_param('panel_id'));
-
-    my %p = $Q->Vars;
+                                           $panel_id);
+    my $user_id = session_user();
     my $errors = {};
 
-    if ($p{send_ratings}) {
-      my $song_ratings = parse_form_ids_for_table(songs => \%p);
+    if ($update) {
+      my $song_ratings = parse_form_ids_for_table(songs => $p);
       while (my ($song_id, $rating) = each %$song_ratings) {
         if ($rating->{ rating_value }
               eq Praati::Constants::NO_SONG_RATING_MARKER) {
@@ -439,7 +458,7 @@ package Praati::Controller {
 
       eval {
         Praati::Model::update_user_ratings($panel->{panel_id},
-                                           session_user(),
+                                           $user_id,
                                            $song_ratings);
       };
       if ($@) {
@@ -447,7 +466,30 @@ package Praati::Controller {
       }
     }
 
-    Praati::View::page_panel_ratings_by_user($errors, $panel);
+    (panel => $panel, user_id => $user_id, errors => $errors);
+  }
+
+  sub panel_ratings_by_user_controller {
+    my %p = $Q->Vars;
+    my $panel_id = $Q->url_param('panel_id');
+    my %r = update_panel_ratings_by_user(\%p, $panel_id, $p{send_ratings});
+    Praati::View::page_panel_ratings_by_user($r{errors},
+                                             $r{panel},
+                                             $r{user_id});
+  }
+
+  sub panel_async_update_panel_ratings {
+    my %p = $Q->Vars;
+    my $panel_id = $p{panel_id};
+
+    my %r;
+    eval { %r = update_panel_ratings_by_user(\%p, $panel_id, 1); };
+    if ($@) {
+      $r{errors}->{'*'} = [ t('Problem updating user ratings.') ];
+      warn("Problem updating user ratings: $@");
+    }
+
+    Praati::View::JS::panel_ratings_json($r{errors}, $r{panel}, $r{user_id});
   }
 
   sub panels_controller {

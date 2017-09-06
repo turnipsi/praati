@@ -42,6 +42,9 @@ Install these packages that are runtime dependencies:
 p5-BSD-arc4random
 
 =item *
+p5-CGI-Fast
+
+=item *
 p5-Crypt-SaltedHash
 
 =item *
@@ -57,7 +60,7 @@ p5-Digest-SHA1
 p5-Email-Valid
 
 =item *
-p5-CGI-Fast
+p5-JSON-XS
 
 =item *
 p5-List-MoreUtils

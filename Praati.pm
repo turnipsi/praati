@@ -58,6 +58,13 @@ package Praati::Error {
 
   use overload q{""} => sub { $_[0]->message; };
 
+  sub async_request_error {
+    my ($err) = @_;
+    confess(
+      __PACKAGE__->new(message => "$err",
+                       type    => 'async request error'));
+  }
+
   sub bad_turning_point {
     confess(
       __PACKAGE__->new(message => 'Song position is not a valid turning point',

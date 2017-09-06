@@ -128,6 +128,9 @@ package Praati::View::L10N::fi {
 
     'Password is missing.'    => 'Salasana puuttuu.',
     'Passwords do not match.' => 'Salasanat eivät täsmää.',
+
+    'Problem updating user ratings.'
+      => 'Arvostelujen tallennuksessa oli ongelma.',
   );
 }
 

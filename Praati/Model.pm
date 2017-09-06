@@ -724,28 +724,24 @@ package Praati::Model {
                       $song_id,
                       $user_id);
       }
+
+      query(q{
+              insert into song_rating_normalized_values
+                  (song_rating_normalized_value_value,
+                   song_rating_value_id)
+                select normalized_rating(user_ratings_statistics_mean,
+                                         user_ratings_statistics_stdev,
+                                         song_rating_value_value),
+                       song_rating_value_id
+                  from song_ratings_with_normalized_values
+                    join user_ratings_statistics using (panel_id, user_id)
+                  where panel_id = ?
+                    and user_id  = ?
+                    and song_rating_value_value is not null
+                    and song_rating_normalized_value_value is null; },
+            $panel_id,
+            $user_id);
     });
-  }
-
-  sub update_user_normalized_ratings {
-    my ($panel_id, $user_id) = @_;
-
-    query(q{
-            insert into song_rating_normalized_values
-                (song_rating_normalized_value_value,
-                 song_rating_value_id)
-              select normalized_rating(user_ratings_statistics_mean,
-                                       user_ratings_statistics_stdev,
-                                       song_rating_value_value),
-                     song_rating_value_id
-                from song_ratings_with_normalized_values
-                  join user_ratings_statistics using (panel_id, user_id)
-                where panel_id = ?
-                  and user_id  = ?
-                  and song_rating_value_value is not null
-                  and song_rating_normalized_value_value is null; },
-          $panel_id,
-          $user_id);
   }
 
   #

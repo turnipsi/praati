@@ -21,6 +21,11 @@ use utf8;
 use warnings FATAL => qw(all);
 
 package Praati::View {
+  use Exporter qw(import);
+  BEGIN {
+    our @EXPORT_OK = qw(get_normalized_value_info);
+  }
+
   use Praati;
   use Praati::Controller qw(get_session_user_role query_method response
                               session_user);
@@ -47,6 +52,7 @@ package Praati::View {
                            escapeHTML
                            h1
                            h2
+                           hidden
                            li
                            meta
                            option
@@ -248,15 +254,13 @@ EOF
   sub page { response(page => standard_page(@_)); }
 
   sub standard_page {
-    my ($title, $content, %opts) = @_;
+    my ($title, $content, @opts) = @_;
 
     confess('No title set for page') unless $title;
 
-    my @start_html_opts = (
-                            $opts{-start_html} ? @{ $opts{-start_html} } : (),
-                            -style => { -code => css(), },
-                            -title => "Praati - $title",
-                          );
+    my @start_html_opts = (-style => { -code => css(), },
+                           -title => "Praati - $title",
+                           @opts);
 
     start_html(@start_html_opts)
     . logged_as()
@@ -327,15 +331,14 @@ EOF
                               order by album_year; },
                          $panel_id);
 
-    Praati::Model::update_user_normalized_ratings($panel_id, $user_id);
-
     my @album_rating_tables
       = map { h1(e($_->{album_name}))
               . table_album_ratings_by_user($_, $panel_id, $user_id) }
           @$albums;
 
-    form({ -method => 'post' },
-         concat(@album_rating_tables));
+    form({ -id => 'song ratings', -method => 'post', },
+         concat(@album_rating_tables)
+         . hidden('panel_id', $panel_id));
   }
 
   #
@@ -413,10 +416,10 @@ EOF
 
     # refresh every $login_refresh_seconds to get a new session cookie
     # (wipes the form as a side effect)
-    my $start_html_options = [
+    my @start_html_options = (
       -head => meta({ -http_equiv => 'refresh',
                       -content    => $login_refresh_seconds }),
-    ];
+    );
 
     my $page
       = form({ -method => 'post' },
@@ -424,9 +427,7 @@ EOF
             Tr($tablerows)));
 
     response(cookie => $cookie,
-             page   => standard_page(t('Login'),
-                                     $page,
-                                     -start_html => $start_html_options));
+             page   => standard_page(t('Login'), $page, @start_html_options));
   }
 
   sub page_logged_out {
@@ -507,10 +508,10 @@ EOF
   }
 
   sub page_panel_ratings_by_user {
-    my ($errors, $panel) = @_;
+    my ($errors, $panel, $user_id) = @_;
 
     my $panel_ratings_form = form_panel_ratings_by_user($panel->{panel_id},
-                                                        session_user());
+                                                        $user_id);
 
     my $content
       = p(t('This panel is "[_1]".', e($panel->{panel_name}))
@@ -518,7 +519,8 @@ EOF
           . $panel_ratings_form);
 
     page(t('Rate songs for "[_1]"', e($panel->{panel_name})),
-         $content);
+         $content,
+         -script => Praati::View::JS::panel_ratings_by_user_js());
   }
 
   sub page_panels {
@@ -640,9 +642,11 @@ EOF
   sub tablerow_edit_song_rating_by_user {
     my ($song_with_rating, $show_artist_name) = @_;
 
-    my ($rating_form_id, $comment_form_id)
-      = map { make_form_id(songs => $song_with_rating->{song_id}, $_) }
-          qw(rating_value rating_comment);
+    my $song_id = $song_with_rating->{song_id};
+    my ($song_form_id, $rating_form_id, $comment_form_id,
+      $normalized_rating_form_id)
+        = map { make_form_id(songs => $song_id, $_) }
+            qw(song rating_value rating_comment normalized_rating);
 
     my $rating_choice
       = song_rating_choice($rating_form_id,
@@ -655,27 +659,36 @@ EOF
 
     my $normalized_value
       = $song_with_rating->{song_rating_normalized_value_value};
-
-    my $color_for_normalized_value = color_for_rating_value($normalized_value,
-                                                            1.0);
-    my $normalized_value_string
-      = $normalized_value ? sprintf('%.1f', $normalized_value)
-          : '&mdash;';
+    my $nv_info = get_normalized_value_info($normalized_value);
 
     my $song_playback_link
-      = a({ -href => link_to_song_playback($song_with_rating->{song_id}) },
+      = a({ -href => link_to_song_playback($song_id) },
           t('play'));
 
-    td([ $show_artist_name ? e($song_with_rating->{artist_name}) : (),
+    td({ -id => $song_form_id },
+       [ $show_artist_name ? e($song_with_rating->{artist_name}) : (),
          div({ -class => 'song_name_in_edit_song_rating' },
              e($song_with_rating->{song_name})),
          $song_playback_link,
          $rating_choice,
          div({ -class => 'normalized_rating_in_edit_song_rating',
-               -style => "background-color: $color_for_normalized_value;" },
-             $normalized_value_string),
+               -id    => $normalized_rating_form_id,
+               -style => $nv_info->{color_style} },
+             $nv_info->{html_string}),
          $comment,
          submit(send_ratings => t('Save all')) ]);
+  }
+
+  sub get_normalized_value_info {
+    my ($normalized_value) = @_;
+    my $color_for_normalized_value = color_for_rating_value($normalized_value,
+                                                            1.0);
+    {
+      color_style => "background-color: $color_for_normalized_value;",
+      html_string => $normalized_value
+                       ? sprintf('%.1f', $normalized_value)
+                       : '&mdash;',
+    };
   }
 
   sub tablerow_song_rating_by_user {
@@ -1043,6 +1056,87 @@ EOF
                : ''),
             e($event_and_song->{song_name}),
             $next_link_html);
+  }
+}
+
+package Praati::View::JS {
+  use JSON::XS;
+  use Praati::Controller qw(response);
+  use Praati::Model qw(rows);
+  use Praati::View qw(get_normalized_value_info);
+
+  sub panel_ratings_json {
+    my ($errors, $panel, $user_id) = @_;
+
+    # XXX a more simplified query could be possible?
+    my $normalized_ratings
+      = rows(q{ select song_id, song_rating_normalized_value_value
+                  from songinfos
+                    cross join users
+                    left outer join song_ratings_with_normalized_values
+                       using (panel_id, song_id, user_id)
+                    where panel_id = ?
+                      and user_id  = ?; },
+                 $panel->{panel_id},
+                 $user_id);
+
+    my %normalized_ratings_by_song_id
+      = map {
+          my ($song_id, $value) = @$_;
+          $song_id => get_normalized_value_info($value);
+        } @$normalized_ratings;
+
+    my $response_struct = {
+      errors             => [ map { @$_ } values %$errors ],
+      normalized_ratings => \%normalized_ratings_by_song_id,
+    };
+
+    my $json = encode_json($response_struct);
+    response(page => $json, type => 'application/json');
+  }
+
+  sub panel_ratings_by_user_js {
+    <<'EOF'
+window.addEventListener('load', function () {
+  var ratings_form = document.getElementById('song ratings');
+
+  function sendData() {
+    var xhr = new XMLHttpRequest();
+    var fd  = new FormData(ratings_form);
+
+    xhr.addEventListener('load', function(event) {
+      var text = event.target.responseText;
+      var response_struct = JSON.parse(text);
+      var normalized_ratings_by_song_id = response_struct.normalized_ratings;
+
+      for (song_id in normalized_ratings_by_song_id) {
+        var element_id = 'songs[' + song_id + '].normalized_rating';
+        var normalized_rating = document.getElementById(element_id);
+        var nv_info = normalized_ratings_by_song_id[song_id];
+
+        normalized_rating.innerHTML = nv_info.html_string;
+        normalized_rating.style = nv_info.color_style;
+      }
+
+      alert('Saved!');
+    });
+
+    xhr.addEventListener('error', function(event) {
+      alert('Async request error!  Oh noes!  This may be BAAAD!');
+    });
+
+    // Set up our request
+    xhr.open('POST', 'send_ratings');
+
+    xhr.send(fd);
+  }
+
+  ratings_form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    sendData();
+  });
+});
+EOF
   }
 }
 
