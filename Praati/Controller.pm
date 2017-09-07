@@ -430,7 +430,7 @@ package Praati::Controller {
   sub async_request_error_controller {
     my ($err) = @_;
     warn("async request error: $err");
-    my $json = encode_json({ errors => { '*' => [ 'async error' ] }});
+    my $json = encode_json({ errors => [ 'async error' ]});
     response(page => $json, status => 500);
   }
 
@@ -440,12 +440,11 @@ package Praati::Controller {
   }
 
   sub update_panel_ratings_by_user {
-    my ($p, $panel_id, $update) = @_;
+    my ($errors, $p, $panel_id, $update) = @_;
     my $panel = one_record_or_no_such_page(q{ select * from panels
                                                 where panel_id = ?; },
                                            $panel_id);
     my $user_id = session_user();
-    my $errors = {};
 
     if ($update) {
       my $song_ratings = parse_form_ids_for_table(songs => $p);
@@ -466,14 +465,18 @@ package Praati::Controller {
       }
     }
 
-    (panel => $panel, user_id => $user_id, errors => $errors);
+    (panel => $panel, user_id => $user_id);
   }
 
   sub panel_ratings_by_user_controller {
     my %p = $Q->Vars;
     my $panel_id = $Q->url_param('panel_id');
-    my %r = update_panel_ratings_by_user(\%p, $panel_id, $p{send_ratings});
-    Praati::View::page_panel_ratings_by_user($r{errors},
+    my $errors = {};
+    my %r = update_panel_ratings_by_user($errors,
+                                         \%p,
+                                         $panel_id,
+                                         $p{send_ratings});
+    Praati::View::page_panel_ratings_by_user($errors,
                                              $r{panel},
                                              $r{user_id});
   }
@@ -482,14 +485,14 @@ package Praati::Controller {
     my %p = $Q->Vars;
     my $panel_id = $p{panel_id};
 
+    my $errors = {};
     my %r;
-    eval { %r = update_panel_ratings_by_user(\%p, $panel_id, 1); };
+    eval { %r = update_panel_ratings_by_user($errors, \%p, $panel_id, 1); };
     if ($@) {
-      $r{errors}->{'*'} = [ t('Problem updating user ratings.') ];
-      warn("Problem updating user ratings: $@");
+      add_unknown_ui_error($errors, '*', "Problem updating user ratings: $@");
     }
 
-    Praati::View::JS::panel_ratings_json($r{errors}, $r{panel}, $r{user_id});
+    Praati::View::JS::panel_ratings_json($errors, $r{panel}, $r{user_id});
   }
 
   sub panels_controller {

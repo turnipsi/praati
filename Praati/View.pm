@@ -1100,25 +1100,72 @@ package Praati::View::JS {
 window.addEventListener('load', function () {
   var ratings_form = document.getElementById('song ratings');
 
+  function disableSubmitButtons() {
+    // XXX
+  }
+
+  function enableSubmitButtons() {
+    // XXX
+  }
+
   function sendData() {
     var xhr = new XMLHttpRequest();
     var fd  = new FormData(ratings_form);
 
     xhr.addEventListener('load', function(event) {
-      var text = event.target.responseText;
-      var response_struct = JSON.parse(text);
-      var normalized_ratings_by_song_id = response_struct.normalized_ratings;
+      try {
+        var text = event.target.responseText;
+        var response_struct = JSON.parse(text);
+        var errors = response_struct.errors;
+        var error_message = null;
 
-      for (song_id in normalized_ratings_by_song_id) {
-        var element_id = 'songs[' + song_id + '].normalized_rating';
-        var normalized_rating = document.getElementById(element_id);
-        var nv_info = normalized_ratings_by_song_id[song_id];
+        if (!errors || typeof(errors) !== 'object') {
+          throw('invalid response from server (missing errors)');
+        }
+        for (key in errors) {
+          if (typeof(errors[key]) !== 'string') {
+            throw('invalid error type');
+          }
+          if (!error_message) {
+            error_message = errors[key];
+          } else {
+            error_message = (error_message + ' / ' + errors[key]);
+          }
+        }
+        if (error_message) { throw(error_message); }
 
-        normalized_rating.innerHTML = nv_info.html_string;
-        normalized_rating.style = nv_info.color_style;
+        var normalized_ratings = response_struct.normalized_ratings;
+        if (!normalized_ratings || typeof(normalized_ratings) !== "object") {
+          throw('invalid response from server (missing normalized ratings)');
+        }
+
+        for (song_id in normalized_ratings) {
+          var element_id = 'songs[' + song_id + '].normalized_rating';
+          var normalized_rating = document.getElementById(element_id);
+          if (!normalized_rating) {
+            throw('could not find normalized rating element');
+          }
+
+          var nv_info = normalized_ratings[song_id];
+          if (!nv_info || typeof(nv_info) !== 'object') {
+            throw('normalized value info is not a valid object');
+          }
+
+          if (typeof(nv_info.html_string) !== 'string') {
+            throw('normalized value info does not contain html string');
+          }
+          if (typeof(nv_info.color_style) !== 'string') {
+            throw('normalized value info does not contain color style');
+          }
+
+          normalized_rating.innerHTML = nv_info.html_string;
+          normalized_rating.style = nv_info.color_style;
+        }
+
+        disableSubmitButtons();
+      } catch (err) {
+        alert('Problems: ' + err);
       }
-
-      alert('Saved!');
     });
 
     xhr.addEventListener('error', function(event) {
@@ -1131,10 +1178,14 @@ window.addEventListener('load', function () {
     xhr.send(fd);
   }
 
-  ratings_form.addEventListener('submit', function (event) {
-    event.preventDefault();
-    sendData();
-  });
+  if (!ratings_form) {
+    alert('Could not find the ratings form!');
+  } else {
+    ratings_form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      sendData();
+    });
+  }
 });
 EOF
   }
