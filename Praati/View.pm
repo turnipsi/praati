@@ -328,7 +328,7 @@ EOF
     my ($panel_id, $user_id) = @_;
 
     my $albums = records(q{ select * from albums_in_panels where panel_id = ?
-                              order by album_year; },
+                              order by album_year, album_name; },
                          $panel_id);
 
     my @album_rating_tables
@@ -509,18 +509,19 @@ EOF
 
   sub page_panel_ratings_by_user {
     my ($errors, $panel, $user_id) = @_;
+    my $panel_id = $panel->{panel_id};
 
-    my $panel_ratings_form = form_panel_ratings_by_user($panel->{panel_id},
-                                                        $user_id);
+    my $panel_ratings_form = form_panel_ratings_by_user($panel_id, $user_id);
 
     my $content
       = p(t('This panel is "[_1]".', e($panel->{panel_name}))
           . (maybe_error('*', $errors, sub { p(concat(@_)); }) // '')
           . $panel_ratings_form);
 
+    my $js = Praati::View::JS::panel_ratings_by_user_js($panel_id, $user_id);
     page(t('Rate songs for "[_1]"', e($panel->{panel_name})),
          $content,
-         -script => Praati::View::JS::panel_ratings_by_user_js());
+         -script => $js);
   }
 
   sub page_panels {
@@ -566,10 +567,9 @@ EOF
   sub is_panel_single_artist {
     my ($panel_id) = @_;
     my $artist_count
-      = one_value(q{
-                    select count(distinct artist_id) from songs_in_panels
-                      join songs using (song_id)
-                    where panel_id = ?; },
+      = one_value(q{ select count(distinct artist_id) from songs_in_panels
+                       join songs using (song_id)
+                     where panel_id = ?; },
                   $panel_id);
 
     ($artist_count == 1);
@@ -736,7 +736,7 @@ EOF
     my $stats
       = one_record(q{ select * from ls_song_rating_results
                         where listening_session_id = ?
-                          and song_id = ?; },
+                          and              song_id = ?; },
                    $listening_session_id,
                    $song_id);
 
@@ -893,7 +893,7 @@ EOF
 
     my $events = records(q{ select * from listening_events
                               where listening_event_number = ?
-                                and listening_session_id = ?; },
+                                and   listening_session_id = ?; },
                          $event_number,
                          $listening_session_id);
 
@@ -966,7 +966,7 @@ EOF
 
           my $listening_sessions
             = records(q{ select * from listening_sessions where panel_id = ?
-                          order by listening_session_name; },
+                           order by listening_session_name; },
                       $panel->{panel_id});
 
           sprintf('%s [%s][%s]',
@@ -1062,7 +1062,7 @@ EOF
 package Praati::View::JS {
   use JSON::XS;
   use Praati::Controller qw(response);
-  use Praati::Model qw(rows);
+  use Praati::Model qw(columns rows);
   use Praati::View qw(get_normalized_value_info);
 
   sub panel_ratings_json {
@@ -1091,10 +1091,42 @@ package Praati::View::JS {
     response(page => $json, type => 'application/json');
   }
 
+  sub make_playlist {
+    my ($panel_id, $user_id) = @_;
+    my $playlist_song_ids
+      = columns(q{ select song_id from song_ratings_with_values
+                     join songs_in_albums using (song_id)
+                     join albums using (album_id)
+                   where song_rating_value_value is null
+                     and panel_id = ?
+                     and user_id = ?
+                   order by album_year, album_name, track_number; },
+            $panel_id,
+            $user_id);
+
+    return $playlist_song_ids if @$playlist_song_ids > 0;
+
+    # If user has rated all songs, remove the "is null" requirement and
+    # put all songs to playlist.
+    columns(q{ select song_id from song_ratings_with_values
+                 join songs_in_albums using (song_id)
+                 join albums (using album_id)
+               where panel_id = ?
+                 and  user_id = ?
+               order by album_year, album_name, track_number; },
+            $panel_id,
+            $user_id);
+  }
+
   sub panel_ratings_by_user_js {
-    <<'EOF'
+    my ($panel_id, $user_id) = @_;
+    my $playlist = make_playlist($panel_id, $user_id);
+    my $playlist_json = encode_json($playlist);
+
+    <<"EOF"
 window.addEventListener('load', function () {
   var ratings_form = document.getElementById('song ratings');
+  var playlist_song_ids = ${playlist_json};
 
   function disableSubmitButtons() {
     // XXX

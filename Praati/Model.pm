@@ -23,7 +23,8 @@ use warnings FATAL => qw(all);
 package Praati::Model {
   use Exporter qw(import);
   BEGIN {
-    our @EXPORT_OK = qw(last_insert_id
+    our @EXPORT_OK = qw(columns
+                        last_insert_id
 		        one_record
 		        one_value
 		        query
