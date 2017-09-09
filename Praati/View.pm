@@ -1068,13 +1068,9 @@ package Praati::View::JS {
   sub panel_ratings_json {
     my ($errors, $panel, $user_id) = @_;
 
-    # XXX a more simplified query could be possible?
     my $normalized_ratings
       = rows(q{ select song_id, song_rating_normalized_value_value
-                  from songinfos
-                    cross join users
-                    left outer join song_ratings_with_normalized_values
-                       using (panel_id, song_id, user_id)
+                  from song_ratings_with_normalized_values
                     where panel_id = ?
                       and user_id  = ?; },
                  $panel->{panel_id},
