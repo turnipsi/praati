@@ -113,7 +113,7 @@ package Praati::View {
 .next_song_link     { padding-left:  1em; }
 .previous_song_link { padding-right: 1em; }
 
-.audio_player {
+.audio_player_div {
   float: right;
 }
 
@@ -336,9 +336,12 @@ EOF
               . table_album_ratings_by_user($_, $panel_id, $user_id) }
           @$albums;
 
-    form({ -id => 'song ratings', -method => 'post', },
-         concat(@album_rating_tables)
-         . hidden('panel_id', $panel_id));
+    my $audio_player = audio_player(undef);
+
+    $audio_player
+    . form({ -id => 'song ratings', -method => 'post', },
+           concat(@album_rating_tables)
+           . hidden('panel_id', $panel_id));
   }
 
   #
@@ -662,7 +665,8 @@ EOF
     my $nv_info = get_normalized_value_info($normalized_value);
 
     my $song_playback_link
-      = a({ -href => link_to_song_playback($song_id) },
+      = a({ -class => 'playback_link',
+            -href  => link_to_song_playback($song_id) },
           t('play'));
 
     td({ -id => $song_form_id },
@@ -688,6 +692,7 @@ EOF
       html_string => $normalized_value
                        ? sprintf('%.1f', $normalized_value)
                        : '&mdash;',
+      value       => $normalized_value, # may be undefined, which is good
     };
   }
 
@@ -829,16 +834,21 @@ EOF
 
   sub audio_player {
     my ($song_id) = @_;
-    my $playback_link = link_to_song_playback($song_id);
+    my $playback_link = $song_id ? link_to_song_playback($song_id) : undef;
 
-    div({ -class => 'audio_player' },
-        audio({ -autoplay => undef, -controls => undef },
-              source({ -src  => $playback_link,
-                       -type => 'audio/mpeg' }),
-              embed({ -src => $playback_link })),
-        div({ -style => 'text-align: right;' },
-            sprintf('(%s)', a({ -href => link_to_song_playback($song_id) },
-                              'mp3'))));
+    # XXX if !$song_id, this should only show up if javascript is turned on
+    div({ -class => 'audio_player_div' },
+        audio({ -autoplay => undef,
+                -controls => undef,
+                -id       => 'audio_player'},
+              source({ -id   => 'audio_player_source',
+                       -src  => $playback_link,
+                       -type => 'audio/mpeg' })));
+
+    # XXX I'd like to provide a direct link, but maybe not now...
+    #   div({ -style => 'text-align: right;' },
+    #       sprintf('(%s)', a({ -href => $playback_link },
+    #                         'mp3'))));
   }
 
   sub color_for_an_interval {
@@ -1065,15 +1075,15 @@ package Praati::View::JS {
   use Praati::Model qw(columns rows);
   use Praati::View qw(get_normalized_value_info);
 
-  sub panel_ratings_json {
-    my ($errors, $panel, $user_id) = @_;
+  sub get_normalized_ratings_by_song_id {
+    my ($panel_id, $user_id) = @_;
 
     my $normalized_ratings
       = rows(q{ select song_id, song_rating_normalized_value_value
                   from song_ratings_with_normalized_values
                     where panel_id = ?
                       and user_id  = ?; },
-                 $panel->{panel_id},
+                 $panel_id,
                  $user_id);
 
     my %normalized_ratings_by_song_id
@@ -1081,6 +1091,15 @@ package Praati::View::JS {
           my ($song_id, $value) = @$_;
           $song_id => get_normalized_value_info($value);
         } @$normalized_ratings;
+
+    \%normalized_ratings_by_song_id;
+  }
+
+  sub panel_ratings_json {
+    my ($errors, $panel, $user_id) = @_;
+
+    my %normalized_ratings_by_song_id
+      = get_normalized_ratings_by_song_id($panel->{panel_id}, $user_id);
 
     my $response_struct = {
       errors             => [ map { @$_ } values %$errors ],
@@ -1092,41 +1111,29 @@ package Praati::View::JS {
   }
 
   sub make_playlist {
-    my ($panel_id, $user_id) = @_;
-    my $playlist_song_ids
-      = columns(q{ select song_id from song_ratings_with_values
-                     join songs_in_albums using (song_id)
-                     join albums using (album_id)
-                   where song_rating_value_value is null
-                     and panel_id = ?
-                     and user_id = ?
-                   order by album_year, album_name, track_number; },
-            $panel_id,
-            $user_id);
-
-    return $playlist_song_ids if @$playlist_song_ids > 0;
-
-    # If user has rated all songs, remove the "is null" requirement and
-    # put all songs to playlist.
-    columns(q{ select song_id from song_ratings_with_values
-                 join songs_in_albums using (song_id)
-                 join albums (using album_id)
-               where panel_id = ?
-                 and  user_id = ?
+    my ($panel_id) = @_;
+    columns(q{ select song_id from songinfos
+                 where panel_id = ?
                order by album_year, album_name, track_number; },
-            $panel_id,
-            $user_id);
+            $panel_id);
   }
 
   sub panel_ratings_by_user_js {
     my ($panel_id, $user_id) = @_;
-    my $playlist = make_playlist($panel_id, $user_id);
+    my $playlist = make_playlist($panel_id);
     my $playlist_json = encode_json($playlist);
+
+    my $normalized_ratings_by_song_id
+      = get_normalized_ratings_by_song_id($panel_id, $user_id);
+    my $normalized_ratings_json = encode_json($normalized_ratings_by_song_id);
 
     <<"EOF"
 window.addEventListener('load', function () {
   var ratings_form = document.getElementById('song ratings');
   var playlist_song_ids = ${playlist_json};
+  var normalized_ratings = ${normalized_ratings_json};
+  var current_playback_song_index = null;
+  var audio_player = document.getElementById('audio_player');
 
   function disableSubmitButtons() {
     // XXX
@@ -1134,6 +1141,55 @@ window.addEventListener('load', function () {
 
   function enableSubmitButtons() {
     // XXX
+  }
+
+  function getNextPlaybackSongId() {
+    if (playlist_song_ids.length === 0) { return null; }
+
+    var first_next_index;
+    if (current_playback_song_index === null) {
+      first_next_index = 0;
+    }
+
+    var next_index = first_next_index;
+    var rating_value
+      = normalized_ratings[ playlist_song_ids[next_index] ].value;
+
+    // find the next song in playlist that user has not rated yet
+    while (rating_value !== null) {
+      next_index = (next_index + 1) % playlist_song_ids.length;
+      if (first_next_index === next_index) {
+        // if we are back to the first index we tried, user has probably
+        // rated all songs and just move on to this one
+        break;
+      }
+      rating_value = normalized_ratings[ playlist_song_ids[next_index] ].value;
+    }
+
+    current_playback_song_index = next_index;
+
+    return playlist_song_ids[current_playback_song_index];
+  }
+
+  function changePlaybackSong(song_id) {
+    var playback_song_id;
+    if (song_id === null) {
+      playback_song_id = getNextPlaybackSongId();
+    } else {
+      playback_song_id = song_id;
+    }
+
+    if (playback_song_id === null) {
+      return;
+    }
+
+    var ap_source = document.getElementById('audio_player_source');
+    var link = '../song/play?song_id=' + playback_song_id;
+    ap_source.src = link;
+
+    audio_player.load();
+    audio_player.play();
+    // XXX this should be updated too: current_playback_song_index
   }
 
   function sendData() {
@@ -1162,10 +1218,11 @@ window.addEventListener('load', function () {
         }
         if (error_message) { throw(error_message); }
 
-        var normalized_ratings = response_struct.normalized_ratings;
-        if (!normalized_ratings || typeof(normalized_ratings) !== "object") {
+        var tmp_normalized = response_struct.normalized_ratings;
+        if (!tmp_normalized || typeof(tmp_normalized) !== "object") {
           throw('invalid response from server (missing normalized ratings)');
         }
+        normalized_rating = tmp_normalized;
 
         for (song_id in normalized_ratings) {
           var element_id = 'songs[' + song_id + '].normalized_rating';
@@ -1190,7 +1247,7 @@ window.addEventListener('load', function () {
           normalized_rating.style = nv_info.color_style;
         }
 
-        disableSubmitButtons();
+        alert('Saved!');
       } catch (err) {
         alert('Problems: ' + err);
       }
@@ -1212,6 +1269,16 @@ window.addEventListener('load', function () {
     ratings_form.addEventListener('submit', function (event) {
       event.preventDefault();
       sendData();
+    });
+  }
+
+  if (!audio_player) {
+    alert('Could not find the audio player!');
+  } else {
+    changePlaybackSong(null);
+    audio_player.addEventListener('ended', function (event) {
+      // maybe: setTimeout(3, function() { changePlaybackSong(null); });
+      changePlaybackSong(null);
     });
   }
 });
