@@ -836,13 +836,14 @@ EOF
     my ($song_id) = @_;
     my $playback_link = $song_id ? link_to_song_playback($song_id) : undef;
 
+    my @audio_opts  = $song_id ? (-autoplay => undef)     : ();
+    my @source_opts = $song_id ? (-src => $playback_link) : ();
+
     # XXX if !$song_id, this should only show up if javascript is turned on
     div({ -class => 'audio_player_div' },
-        audio({ -autoplay => undef,
-                -controls => undef,
-                -id       => 'audio_player'},
-              source({ -id   => 'audio_player_source',
-                       -src  => $playback_link,
+        audio({ @audio_opts, -controls => undef, -id => 'audio_player'},
+              source({ @source_opts,
+                       -id   => 'audio_player_source',
                        -type => 'audio/mpeg' })));
 
     # XXX I'd like to provide a direct link, but maybe not now...
@@ -1098,12 +1099,12 @@ package Praati::View::JS {
   sub panel_ratings_json {
     my ($errors, $panel, $user_id) = @_;
 
-    my %normalized_ratings_by_song_id
+    my $normalized_ratings_by_song_id
       = get_normalized_ratings_by_song_id($panel->{panel_id}, $user_id);
 
     my $response_struct = {
       errors             => [ map { @$_ } values %$errors ],
-      normalized_ratings => \%normalized_ratings_by_song_id,
+      normalized_ratings => $normalized_ratings_by_song_id,
     };
 
     my $json = encode_json($response_struct);
@@ -1134,13 +1135,24 @@ window.addEventListener('load', function () {
   var normalized_ratings = ${normalized_ratings_json};
   var current_playback_song_index = null;
   var audio_player = document.getElementById('audio_player');
+  var submitbuttons_state = null;
 
-  function disableSubmitButtons() {
-    // XXX
-  }
+  function changeSubmitButtonsState(enable_or_disable) {
+    if (submitbuttons_state === enable_or_disable) {
+      return;
+    }
 
-  function enableSubmitButtons() {
-    // XXX
+    var submit_buttons = document.getElementsByName('send_ratings');
+    for (i = 0; i < submit_buttons.length; i++) {
+      var button = submit_buttons[i];
+      if (enable_or_disable) {
+        button.disabled = false;
+      } else {
+        button.disabled = true;
+      }
+    }
+
+    submitbuttons_state = enable_or_disable;
   }
 
   function getNextPlaybackSongId() {
@@ -1222,7 +1234,7 @@ window.addEventListener('load', function () {
         if (!tmp_normalized || typeof(tmp_normalized) !== "object") {
           throw('invalid response from server (missing normalized ratings)');
         }
-        normalized_rating = tmp_normalized;
+        normalized_ratings = tmp_normalized;
 
         for (song_id in normalized_ratings) {
           var element_id = 'songs[' + song_id + '].normalized_rating';
@@ -1247,7 +1259,7 @@ window.addEventListener('load', function () {
           normalized_rating.style = nv_info.color_style;
         }
 
-        alert('Saved!');
+        changeSubmitButtonsState(false);
       } catch (err) {
         alert('Problems: ' + err);
       }
@@ -1270,6 +1282,25 @@ window.addEventListener('load', function () {
       event.preventDefault();
       sendData();
     });
+
+    var select_inputs = ratings_form.getElementsByTagName('select');
+    for (i = 0; i < select_inputs.length; i++) {
+      var input = select_inputs[i];
+      input.addEventListener('change', function(event) {
+        changeSubmitButtonsState(true);
+      });
+    }
+
+    var form_inputs = ratings_form.getElementsByTagName('input');
+    for (i = 0; i < form_inputs.length; i++) {
+      var input = form_inputs[i];
+      if (input.type !== 'text') { continue; }
+      input.addEventListener('input', function(event) {
+        changeSubmitButtonsState(true);
+      });
+    }
+
+    changeSubmitButtonsState(false);
   }
 
   if (!audio_player) {
