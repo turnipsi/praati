@@ -1084,7 +1084,10 @@ package Praati::View::JS {
 
     my $normalized_ratings
       = rows(q{ select song_id, song_rating_normalized_value_value
-                  from song_ratings_with_normalized_values
+                  from songs_in_panels
+                    cross join users
+                    left outer join song_ratings_with_normalized_values
+                       using (panel_id, song_id, user_id)
                     where panel_id = ?
                       and user_id  = ?; },
                  $panel_id,
