@@ -568,6 +568,9 @@ EOF
   }
 
   sub is_panel_single_artist {
+    # XXX treat all panels as single artist panels for now... remove later
+    return 1;
+
     my ($panel_id) = @_;
     my $artist_count
       = one_value(q{ select count(distinct artist_id) from songs_in_panels
