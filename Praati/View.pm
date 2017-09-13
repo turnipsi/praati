@@ -103,6 +103,9 @@ package Praati::View {
   padding-right: 0.7em;
 }
 
+.playback_song {
+  background-color: lightgreen;
+};
 
 /*
  * listening event styles
@@ -564,7 +567,7 @@ EOF
       tablerow_edit_song_rating_by_user($_, $show_artist_name)
     } @$songs;
 
-    concat( table( Tr(\@tablerows) ) );
+    concat( table(@tablerows) );
   }
 
   sub is_panel_single_artist {
@@ -672,18 +675,18 @@ EOF
             -href  => link_to_song_playback($song_id) },
           t('play'));
 
-    td({ -id => $song_form_id },
-       [ $show_artist_name ? e($song_with_rating->{artist_name}) : (),
-         div({ -class => 'song_name_in_edit_song_rating' },
-             e($song_with_rating->{song_name})),
-         $song_playback_link,
-         $rating_choice,
-         div({ -class => 'normalized_rating_in_edit_song_rating',
-               -id    => $normalized_rating_form_id,
-               -style => $nv_info->{color_style} },
-             $nv_info->{html_string}),
-         $comment,
-         submit(send_ratings => t('Save all')) ]);
+    Tr({ -class => 'not_playback_song', -id => $song_form_id, },
+       td([ $show_artist_name ? e($song_with_rating->{artist_name}) : (),
+            div({ -class => 'song_name_in_edit_song_rating' },
+                e($song_with_rating->{song_name})),
+            $song_playback_link,
+            $rating_choice,
+            div({ -class => 'normalized_rating_in_edit_song_rating',
+                  -id    => $normalized_rating_form_id,
+                  -style => $nv_info->{color_style} },
+                $nv_info->{html_string}),
+            $comment,
+            submit(send_ratings => t('Save all')) ]));
   }
 
   sub get_normalized_value_info {
@@ -1184,9 +1187,7 @@ window.addEventListener('load', function () {
       rating_value = normalized_ratings[ playlist_song_ids[next_index] ].value;
     }
 
-    current_playback_song_index = next_index;
-
-    return playlist_song_ids[current_playback_song_index];
+    return playlist_song_ids[next_index];
   }
 
   function changePlaybackSong(song_id) {
@@ -1202,12 +1203,35 @@ window.addEventListener('load', function () {
     }
 
     var ap_source = document.getElementById('audio_player_source');
+    alert('playback_song_id = ' + playback_song_id);
     var link = '../song/play?song_id=' + playback_song_id;
     ap_source.src = link;
 
     audio_player.load();
     audio_player.play();
-    // XXX this should be updated too: current_playback_song_index
+
+    if (current_playback_song_index !== null) {
+      var old_playback_song_id
+        = playlist_song_ids[ current_playback_song_index ];
+      var html_old_song_id = 'songs[' + old_playback_song_id + '].song';
+      var old_song_id_element = document.getElementById(html_old_song_id);
+      if (old_song_id_element !== null) {
+        old_song_id_element.className = 'not_playback_song';
+      }
+    }
+
+    var html_new_song_id = 'songs[' + playback_song_id + '].song';
+    var new_song_id_element = document.getElementById(html_new_song_id);
+    if (new_song_id_element !== null) {
+      new_song_id_element.className = 'playback_song';
+    }
+
+    for (i = 0; i < playlist_song_ids.length; i++) {
+      if (song_id === playlist_song_ids[i]) {
+        current_playback_song_index = i;
+        break;
+      }
+    }
   }
 
   function sendData() {
