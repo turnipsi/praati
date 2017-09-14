@@ -652,10 +652,11 @@ EOF
     my ($song_with_rating, $show_artist_name) = @_;
 
     my $song_id = $song_with_rating->{song_id};
-    my ($song_form_id, $rating_form_id, $comment_form_id,
+    my ($song_form_id, $playback_link_id, $rating_form_id, $comment_form_id,
       $normalized_rating_form_id)
         = map { make_form_id(songs => $song_id, $_) }
-            qw(song rating_value rating_comment normalized_rating);
+            qw(song playback_link rating_value rating_comment
+               normalized_rating);
 
     my $rating_choice
       = song_rating_choice($rating_form_id,
@@ -672,7 +673,8 @@ EOF
 
     my $song_playback_link
       = a({ -class => 'playback_link',
-            -href  => link_to_song_playback($song_id) },
+            -href  => link_to_song_playback($song_id),
+            -id    => $playback_link_id },
           t('play'));
 
     Tr({ -class => 'not_playback_song', -id => $song_form_id, },
@@ -1146,6 +1148,13 @@ window.addEventListener('load', function () {
   var audio_player = document.getElementById('audio_player');
   var submitbuttons_state = null;
 
+  function addSonglinkEventListener(html_song_link, song_id) {
+    html_song_link.addEventListener('click', function(event) {
+      event.preventDefault();
+      changePlaybackSong(song_id);
+    });
+  }
+
   function changeSubmitButtonsState(enable_or_disable) {
     if (submitbuttons_state === enable_or_disable) {
       return;
@@ -1203,7 +1212,6 @@ window.addEventListener('load', function () {
     }
 
     var ap_source = document.getElementById('audio_player_source');
-    alert('playback_song_id = ' + playback_song_id);
     var link = '../song/play?song_id=' + playback_song_id;
     ap_source.src = link;
 
@@ -1227,7 +1235,7 @@ window.addEventListener('load', function () {
     }
 
     for (i = 0; i < playlist_song_ids.length; i++) {
-      if (song_id === playlist_song_ids[i]) {
+      if (playback_song_id === playlist_song_ids[i]) {
         current_playback_song_index = i;
         break;
       }
@@ -1341,6 +1349,15 @@ window.addEventListener('load', function () {
       // maybe: setTimeout(3, function() { changePlaybackSong(null); });
       changePlaybackSong(null);
     });
+
+    if (ratings_form) {
+      for (i = 0; i < playlist_song_ids.length; i++) {
+        var song_id = playlist_song_ids[i];
+        var song_link_id = 'songs[' + song_id + '].playback_link';
+        var html_song_link = document.getElementById(song_link_id);
+        addSonglinkEventListener(html_song_link, song_id);
+      }
+    }
   }
 });
 EOF
