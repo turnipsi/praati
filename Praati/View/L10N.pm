@@ -85,6 +85,7 @@ package Praati::View::L10N::fi {
     'Wrong username or password.' => 'Väärä käyttäjänimi tai salasana.',
 
     'Rate songs for "[_1]"' => 'Arvostele laulut raadissa "[_1]"',
+    'Unrated song count:' => 'Arvostelemattomien laulujen määrä:',
 
     'Play songs from worst to best'
       => 'Soita laulut huonoimmasta parhaimpaan.',

@@ -23,7 +23,7 @@ use warnings FATAL => qw(all);
 package Praati::View {
   use Exporter qw(import);
   BEGIN {
-    our @EXPORT_OK = qw(get_normalized_value_info);
+    our @EXPORT_OK = qw(count_unrated_songs get_normalized_value_info);
   }
 
   use Praati;
@@ -341,7 +341,13 @@ EOF
 
     my $audio_player = audio_player(undef);
 
+    my $unrated_song_count = count_unrated_songs($panel_id, $user_id);
+
     $audio_player
+    . p(t('Unrated song count:')
+        . ' '
+        . span({ -id => 'unrated_song_count' }, $unrated_song_count)
+        . '.')
     . form({ -id => 'song ratings', -method => 'post', },
            concat(@album_rating_tables)
            . hidden('panel_id', $panel_id));
@@ -1076,13 +1082,29 @@ EOF
             e($event_and_song->{song_name}),
             $next_link_html);
   }
+
+  sub count_unrated_songs {
+    # XXX a view for this kind of query might be nice?
+    my ($panel_id, $user_id) = @_;
+
+    one_value(q{ select count(song_id)
+                   from songs_in_panels
+                     cross join users
+                     left outer join song_ratings_with_normalized_values
+                       using (panel_id, song_id, user_id)
+                     where song_rating_normalized_value_value is null
+                       and panel_id = ?
+                       and user_id  = ?; },
+              $panel_id,
+              $user_id);
+  }
 }
 
 package Praati::View::JS {
   use JSON::XS;
   use Praati::Controller qw(response);
-  use Praati::Model qw(columns rows);
-  use Praati::View qw(get_normalized_value_info);
+  use Praati::Model qw(columns one_value rows);
+  use Praati::View qw(count_unrated_songs get_normalized_value_info);
 
   sub get_normalized_ratings_by_song_id {
     my ($panel_id, $user_id) = @_;
@@ -1113,9 +1135,11 @@ package Praati::View::JS {
     my $normalized_ratings_by_song_id
       = get_normalized_ratings_by_song_id($panel->{panel_id}, $user_id);
 
+    my $unrated_song_count = count_unrated_songs($panel->{panel_id}, $user_id);
     my $response_struct = {
       errors             => [ map { @$_ } values %$errors ],
       normalized_ratings => $normalized_ratings_by_song_id,
+      unrated_song_count => $unrated_song_count,
     };
 
     my $json = encode_json($response_struct);
@@ -1146,6 +1170,7 @@ window.addEventListener('load', function () {
   var normalized_ratings = ${normalized_ratings_json};
   var current_playback_song_index = null;
   var audio_player = document.getElementById('audio_player');
+  var unrated_song_count_html = document.getElementById('unrated_song_count');
   var submitbuttons_state = null;
 
   function addSonglinkEventListener(html_song_link, song_id) {
@@ -1274,6 +1299,11 @@ window.addEventListener('load', function () {
         }
         normalized_ratings = tmp_normalized;
 
+        var unrated_song_count = response_struct.unrated_song_count;
+        if (unrated_song_count === null) {
+          throw('invalid response from server (missing unrated_song_count)');
+        }
+
         for (song_id in normalized_ratings) {
           var element_id = 'songs[' + song_id + '].normalized_rating';
           var normalized_rating = document.getElementById(element_id);
@@ -1295,6 +1325,10 @@ window.addEventListener('load', function () {
 
           normalized_rating.innerHTML = nv_info.html_string;
           normalized_rating.style = nv_info.color_style;
+        }
+
+        if (unrated_song_count_html) {
+          unrated_song_count_html.innerText = unrated_song_count;
         }
 
         changeSubmitButtonsState(false);
