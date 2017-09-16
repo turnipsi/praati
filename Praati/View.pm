@@ -1201,12 +1201,13 @@ window.addEventListener('load', function () {
   function getNextPlaybackSongId() {
     if (playlist_song_ids.length === 0) { return null; }
 
-    var first_next_index = 0;
+    var next_index = 0;
     if (current_playback_song_index !== null) {
-      first_next_index = current_playback_song_index;
+      next_index = (current_playback_song_index + 1)
+                     % playlist_song_ids.length;
     }
+    first_next_index = next_index;
 
-    var next_index = first_next_index;
     var rating_value
       = normalized_ratings[ playlist_song_ids[next_index] ].value;
 
