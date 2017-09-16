@@ -117,7 +117,9 @@ package Praati::View {
 .previous_song_link { padding-right: 1em; }
 
 .audio_player_div {
-  float: right;
+  position: fixed;
+  top: 10px;
+  right: 10px;
 }
 
 .rating_stats {
