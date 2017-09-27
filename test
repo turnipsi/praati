@@ -42,6 +42,7 @@ package Praati::User {
     password => '$',
     site     => '$',
   };
+  use Praati::View::L10N qw(t);
 
   use Test::Deep;
   use Test::More;
