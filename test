@@ -17,6 +17,7 @@
 
 use autodie;
 # use diagnostics;
+use feature qw(unicode_strings);
 use strict;
 use utf8;
 use warnings FATAL => qw(all);
