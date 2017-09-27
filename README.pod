@@ -87,6 +87,9 @@ p5-HTML-SimpleParse
 p5-HTML-TableContentParser
 
 =item *
+p5-Test-Deep
+
+=item *
 p5-Test-WWW-Mechanize
 
 =back
