@@ -242,6 +242,21 @@ package Praati::User {
     $self->browser->get_ok($self->site);
   }
 
+  sub ask_first_panel_name {
+    my ($self) = @_;
+    $self->browser->follow_link_ok({ text => t('Panels') })
+      and $self->browser->follow_link_ok({ text => t('rate') })
+        or return;
+
+    my $regex = t('This panel is "[_1]".', 'PANEL_NAME');
+    $regex = qr{\Q$regex\E};
+    $regex =~ s/PANEL_NAME/\(\.\*\?\)/;
+
+    $self->browser->content() =~ $regex
+      or return;
+    $1;
+  }
+
   sub new_user {
     my ($class, $site, $email, $name, $password) = @_;
 
@@ -327,7 +342,6 @@ package Praati::User {
 die 'Usage: test site' unless $ARGV[0];
 
 my $site       = $ARGV[0];
-my $panel_name = 'Depeche Mode - Best of Greatest Hits';
 
 
 # The admin user must be created first.
@@ -337,6 +351,14 @@ my $admin1 = Praati::User->new_user($site,
                                     'Admin One',
                                     'pogjwviwjvalaook');
 
+my $panel_name;
+do {
+  $admin1
+    and $admin1->login('admin')
+    and $panel_name = $admin1->ask_first_panel_name();
+} or die 'Could not get panel name';
+
+$admin1->logout();
 
 # critic One
 
