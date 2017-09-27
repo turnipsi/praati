@@ -116,7 +116,6 @@ package Praati::User {
     my ($p, @nodes) = get_parser_and_nodes($html);
     for (my $i = 0; $i < $#nodes; $i++) {
       my $n = $nodes[$i];
-      use Data::Dumper;
       if ($n->{type} eq 'text' && $n->{content} =~ /\Q$panel_name\E/) {
         my $ls_node = $nodes[$i + 5];
         if ($ls_node && $ls_node->{type} eq 'starttag') {
