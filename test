@@ -206,31 +206,37 @@ package Praati::User {
 
     my $tcp    = HTML::TableContentParser->new();
     my $tables = $tcp->parse( $self->browser->content() );
+    return unless ref($tables) eq 'ARRAY';
 
-    if ($tables && $tables->[1] && $tables->[1]{rows}) {
-      foreach my $row (@{ $tables->[1]{rows} }) {
+    foreach my $tablerow (@$tables) {
+      next unless ref($tablerow->{rows}) eq 'ARRAY';
+
+      foreach my $row (@{ $tablerow->{rows} }) {
         my $cells = $row->{cells};
 
-        next unless $cells && $cells->[1] && $cells->[1]{data}
-                           && $cells->[3] && $cells->[3]{data};
+	next unless ref($cells) eq 'ARRAY'
+		      && ref($cells->[0]) eq 'HASH'
+		      && $cells->[0]{data}
+		      && ref($cells->[2]) eq 'HASH'
+		      && $cells->[2]{data};
 
-        my $songname;
-        my (undef, @songname_nodes) = get_parser_and_nodes($cells->[1]{data});
-        foreach (@songname_nodes) {
-          $songname = $_->{content} if $_->{type} eq 'text';
-        }
-        next unless $songname;
+	my $songname;
+	my (undef, @songname_nodes) = get_parser_and_nodes($cells->[0]{data});
+	foreach (@songname_nodes) {
+	  next unless $_->{type} eq 'text';
+	  $songname = $_->{content};
+	}
+	next unless $songname;
 
-        my ($p, @nodes) = get_parser_and_nodes($cells->[3]{data});
-        foreach (@nodes) {
-          if ($_->{type} eq 'starttag') {
-            my %args = $p->parse_args( $_->{content} );
-            if ($args{name} && $args{name} =~ /^songs\[(\d+)\].rating_value$/) {
-              $rating_ids{ $songname } = $1;
-              last;
-            }
-          }
-        }
+	my ($p, @nodes) = get_parser_and_nodes($cells->[2]{data});
+	foreach (@nodes) {
+	  next unless $_->{type} eq 'starttag';
+	  my %args = $p->parse_args( $_->{content} );
+	  next unless
+	    $args{name} && $args{name} =~ /^songs\[(\d+)\].rating_value$/;
+	  $rating_ids{ $songname } = $1;
+	  last;
+	}
       }
     }
 
@@ -273,16 +279,17 @@ package Praati::User {
   }
 
   sub rate_songs {
-    my ($self, $panel_name, $song_ratings) = @_;
+    my ($self, $panel_name, $rating_fn) = @_;
 
     my $user_name = $self->name;
 
     my $title = qq{"$user_name" rates songs in "$panel_name"};
 
-    my $song_ratings_count = scalar(keys %$song_ratings);
+    # XXX testcount should not depend on this
+    # my $song_ratings_count = 0;
 
     subtest($title => sub {
-      plan(tests => (4 + $song_ratings_count));
+      plan(tests => 5);
 
       $self->main_page_ok()
         and $self->browser->follow_link_ok({ text => t('Panels') })
@@ -293,12 +300,15 @@ package Praati::User {
 
       my $rating_ids = $self->lookup_rating_ids();
 
-      while (my ($song_name, $rating_value) = each %$song_ratings) {
-        my $rating_id = $rating_ids->{ CGI::escapeHTML($song_name) };
+      my @songs_ordered_by_song_id =
+        sort { $rating_ids->{$a} <=> $rating_ids->{$b} }
+          keys %$rating_ids;
 
-        ok(defined($rating_id), "Found rating id for song '$song_name'")
-          and $self->browser->select("songs[$rating_id].rating_value",
-                                     $rating_value);
+      foreach my $songname (@songs_ordered_by_song_id) {
+        my $song_id = $rating_ids->{ CGI::escapeHTML($songname) };
+        my $rating_value = $rating_fn->($song_id, $songname);
+
+	$self->browser->select("songs[$song_id].rating_value", $rating_value);
       }
 
       $self->browser->submit_form_ok({ button => 'send_ratings', },
@@ -367,34 +377,17 @@ my $critic1 = Praati::User->new_user($site,
                                     'One',
                                     'jtreofnvwlcjiwe');
 
+package Praati::User::RatingStyles {
+  sub do_not_rate { '-';   }
+  sub rate_some   { '5.0'; }
+}
+
+sub Praati:: {}
+
 $critic1
   and $critic1->login('critic')
   and $critic1->rate_songs($panel_name,
-                           {
-                             q{Personal Jesus}                    => '8.0',
-                             q{Just Can't Get Enough}             => '1.5',
-                             q{Everything Counts}                 => '7.5',
-                             q{Enjoy The Silence}                 => '5.5',
-                             q{Shake The Disease}                 => '3.5',
-                             q{See You}                           => '1.0',
-                             q{It's No Good}                      => '5.0',
-                             q{Strangelove}                       => '6.0',
-                             q{Suffer Well}                       => '7.0',
-                             q{Dream On}                          => '5.5',
-                             q{People Are People}                 => '4.0',
-                             q{Martyr}                            => '8.0',
-                             q{Walking In My Shoes}               => '9.0',
-                             q{I Feel You}                        => '9.0',
-                             q{Precious}                          => '3.5',
-                             q{Master And Servant}                => '2.5',
-                             q{New Life}                          => '2.0',
-                             q{Never Let Me Down Again}           => '7.5',
-                             q{Wrong}                             => '6.0',
-                             q{Peace}                             => '5.5',
-                             q{Personal Jesus (The Stargate Mix)} => '3.5',
-                             q{Heaven}                            => '3.5',
-                             q{Soothe My Soul}                    => '4.0',
-                           })
+			   \&Praati::User::RatingStyles::do_not_rate)
   and $critic1->logout();
 
 
@@ -408,31 +401,7 @@ my $critic2 = Praati::User->new_user($site,
 $critic2
   and $critic2->login('critic')
   and $critic2->rate_songs($panel_name,
-                           {
-                             q{Personal Jesus}                    =>  '2.0',
-                             q{Just Can't Get Enough}             =>  '3.5',
-                             q{Everything Counts}                 =>  '8.0',
-                             q{Enjoy The Silence}                 =>  '3.0',
-                             q{Shake The Disease}                 =>  '7.5',
-                             q{See You}                           =>  '3.0',
-                             q{It's No Good}                      =>  '0.0',
-                             q{Strangelove}                       =>  '3.5',
-                             q{Suffer Well}                       =>  '2.0',
-                             q{Dream On}                          =>  '9.0',
-                             q{People Are People}                 =>  '4.5',
-                             q{Martyr}                            =>  '8.0',
-                             q{Walking In My Shoes}               =>  '1.5',
-                             q{I Feel You}                        =>  '4.0',
-                             q{Precious}                          =>  '6.5',
-                             q{Master And Servant}                =>  '4.5',
-                             q{New Life}                          =>  '9.5',
-                             q{Never Let Me Down Again}           => '10.0',
-                             q{Wrong}                             =>  '0.5',
-                             q{Peace}                             =>  '3.5',
-                             q{Personal Jesus (The Stargate Mix)} =>  '4.0',
-                             q{Heaven}                            =>  '9.5',
-                             q{Soothe My Soul}                    =>  '8.0',
-                           })
+			   \&Praati::User::RatingStyles::do_not_rate)
   and $critic2->logout();
 
 
@@ -476,12 +445,14 @@ my $critic4 = Praati::User->new_user($site,
 
 $critic3
   and $critic3->login('critic')
-  and $critic3->rate_songs($panel_name, \%ratings_for_critics_three_and_four)
+  and $critic3->rate_songs($panel_name,
+			   \&Praati::User::RatingStyles::do_not_rate)
   and $critic3->logout();
 
 $critic4
   and $critic4->login('critic')
-  and $critic4->rate_songs($panel_name, \%ratings_for_critics_three_and_four)
+  and $critic4->rate_songs($panel_name,
+			   \&Praati::User::RatingStyles::do_not_rate)
   and $critic4->logout();
 
 
@@ -500,7 +471,7 @@ my %critics_three_and_four_opposite_ratings = (
 $critic5
   and $critic5->login('critic')
   and $critic5->rate_songs($panel_name,
-                           \%critics_three_and_four_opposite_ratings)
+			   \&Praati::User::RatingStyles::do_not_rate)
   and $critic5->logout();
 
 my $critic6 = Praati::User->new_user($site,
@@ -514,17 +485,7 @@ my $critic6 = Praati::User->new_user($site,
 $critic6
   and $critic6->login('critic')
   and $critic6->rate_songs($panel_name,
-                           {
-                             q{Just Can't Get Enough}             => '4.5',
-                             q{Shake The Disease}                 => '8.0',
-                             q{It's No Good}                      => '4.0',
-                             q{People Are People}                 => '6.5',
-                             q{Walking In My Shoes}               => '2.5',
-                             q{Precious}                          => '6.0',
-                             q{Never Let Me Down Again}           => '8.5',
-                             q{Peace}                             => '5.5',
-                             q{Heaven}                            => '2.0',
-                            })
+			   \&Praati::User::RatingStyles::do_not_rate)
   and $critic6->logout();
 
 
@@ -538,31 +499,7 @@ my $critic7 = Praati::User->new_user($site,
 $critic7
   and $critic7->login('critic')
   and $critic7->rate_songs($panel_name,
-                           {
-                             q{Personal Jesus}                    => '4.0',
-                             q{Just Can't Get Enough}             => '4.0',
-                             q{Everything Counts}                 => '4.0',
-                             q{Enjoy The Silence}                 => '4.0',
-                             q{Shake The Disease}                 => '4.0',
-                             q{See You}                           => '4.0',
-                             q{It's No Good}                      => '4.0',
-                             q{Strangelove}                       => '4.0',
-                             q{Suffer Well}                       => '4.0',
-                             q{Dream On}                          => '4.0',
-                             q{People Are People}                 => '4.0',
-                             q{Martyr}                            => '4.0',
-                             q{Walking In My Shoes}               => '4.0',
-                             q{I Feel You}                        => '4.0',
-                             q{Precious}                          => '4.0',
-                             q{Master And Servant}                => '4.0',
-                             q{New Life}                          => '4.0',
-                             q{Never Let Me Down Again}           => '4.0',
-                             q{Wrong}                             => '4.0',
-                             q{Peace}                             => '4.0',
-                             q{Personal Jesus (The Stargate Mix)} => '4.0',
-                             q{Heaven}                            => '4.0',
-                             q{Soothe My Soul}                    => '4.0',
-                            })
+			   \&Praati::User::RatingStyles::do_not_rate)
   and $critic7->logout();
 
 
@@ -576,30 +513,7 @@ my $critic8 = Praati::User->new_user($site,
 $critic8
   and $critic8->login('critic')
   and $critic8->rate_songs($panel_name,
-                           {
-                             q{Personal Jesus}                    => '8.5',
-                             q{Just Can't Get Enough}             => '5.0',
-                             q{Everything Counts}                 => '3.0',
-                             q{Enjoy The Silence}                 => '7.0',
-                             q{Shake The Disease}                 => '9.5',
-                             q{See You}                           => '2.0',
-                             q{It's No Good}                      => '6.5',
-                             q{Strangelove}                       => '5.5',
-                             q{Suffer Well}                       => '4.5',
-                             q{Dream On}                          => '7.5',
-                             q{People Are People}                 => '5.0',
-                             q{Martyr}                            => '4.5',
-                             q{Walking In My Shoes}               => '7.5',
-                             q{Precious}                          => '7.0',
-                             q{Master And Servant}                => '0.5',
-                             q{New Life}                          => '2.5',
-                             q{Never Let Me Down Again}           => '9.5',
-                             q{Wrong}                             => '1.5',
-                             q{Peace}                             => '3.5',
-                             q{Personal Jesus (The Stargate Mix)} => '9.5',
-                             q{Heaven}                            => '8.5',
-                             q{Soothe My Soul}                    => '3.0',
-                            })
+			   \&Praati::User::RatingStyles::do_not_rate)
   and $critic8->logout();
 
 
@@ -613,43 +527,15 @@ my $critic9 = Praati::User->new_user($site,
 $critic9
   and $critic9->login('critic')
   and $critic9->rate_songs($panel_name,
-                           {
-                             q{Master And Servant} => '1.0',
-                             q{New Life}           => '7.0',
-                             q{Suffer Well}        => '5.5',
-                             q{Dream On}           => '7.0',
-                             q{Soothe My Soul}     => '1.0',
-                             q{Peace}              => '4.5',
-                           })
+			   \&Praati::User::RatingStyles::rate_some)
   and $critic9->logout()
   and $critic9->login('critic')
   and $critic9->rate_songs($panel_name,
-                           {
-                             q{Martyr}              => '5.5',
-                             q{People Are People}   => '3.0',
-                             q{Walking In My Shoes} => '3.5',
-                             q{Everything Counts}   => '9.5',
-                             q{Precious}            => '9.0',
-                             q{Shake The Disease}   => '8.5',
-                             q{See You}             => '3.5',
-                             q{Strangelove}         => '3.5',
-                             q{Suffer Well}         => '3.0',
-                             q{It's No Good}        => '6.0',
-                             q{Enjoy The Silence}   => '6.0',
-                             q{Dream On}            => '8.0',
-                           })
+			   \&Praati::User::RatingStyles::rate_some)
   and $critic9->logout()
   and $critic9->login('critic')
   and $critic9->rate_songs($panel_name,
-                           {
-                             q{Precious}                => '4.0',
-                             q{Personal Jesus}          => '5.0',
-                             q{Just Can't Get Enough}   => '4.0',
-                             q{Never Let Me Down Again} => '9.0',
-                             q{Peace}                   =>   '-',
-                             q{Heaven}                  => '6.5',
-                             q{Soothe My Soul}          => '4.0',
-                           })
+			   \&Praati::User::RatingStyles::rate_some)
   and $critic9->logout();
 
 
