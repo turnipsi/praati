@@ -110,6 +110,11 @@ package Praati::Model {
   }
 
   sub create_db_tables {
+    # XXX These tables allow song_rating_values that are not a multiple
+    # XXX of 0.5.  This is otherwise okay, except it is possible to input
+    # XXX these "non-supported" values into the database through the web forms,
+    # XXX but these values do not show up properly in the form.
+
     query(q{
       create table if not exists users (
         user_id                 integer      primary key not null,
