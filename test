@@ -25,7 +25,7 @@ use warnings FATAL => qw(all);
 use CGI;
 use HTML::SimpleParse;
 use HTML::TableContentParser;
-use Test::More tests => 47;
+use Test::More tests => 48;
 use Test::WWW::Mechanize;
 
 use lib '.';
@@ -292,7 +292,7 @@ package Praati::User {
     # my $song_ratings_count = 0;
 
     subtest($title => sub {
-      plan(tests => 5);
+      plan(tests => 4);
 
       $self->main_page_ok()
         and $self->browser->follow_link_ok({ text => t('Panels') })
@@ -365,11 +365,50 @@ package Praati::User::RatingStyles {
   }
 
   sub rate_by_songname_ascending {
-    # XXX
+    my ($state, $song_id, $songname) = @_;
+    my ($first_letter) = map lc, ($songname =~ /^([\w])/);
+    my @alphabets = ('a'..'z');
+    for my $i (0 .. $#alphabets) {
+      if ($alphabets[$i] eq $first_letter) {
+	return _round_to_nearest_half(10.0 * ($i / scalar(@alphabets)));
+      }
+    }
+
+    '0.0';
   }
 
   sub rate_by_songname_descending {
-    # XXX
+    sprintf('%.1f', 10.0 - rate_by_songname_ascending(@_));
+  }
+
+  sub rate_sine {
+    my ($state, $song_id, $songname) = @_;
+    _round_to_nearest_half(10.0 * ((1.0 + sin($song_id / 7.0)) / 2));
+  }
+
+  sub rate_cosine {
+    my ($state, $song_id, $songname) = @_;
+    _round_to_nearest_half(10.0 * ((1.0 + cos($song_id / 7.0)) / 2));
+  }
+
+  sub rate_all_but_one {
+    my ($state, $song_id, $songname) = @_;
+    if (!$state->{done}) {
+      $state->{done} = 1;
+      return '-';
+    }
+
+    rate_by_songname_ascending(@_);
+  }
+
+  sub rate_only_one {
+    my ($state, $song_id, $songname) = @_;
+    if (!$state->{done}) {
+      $state->{done} = 1;
+      return '7.0';
+    }
+
+    return '-';
   }
 
   sub rate_some {
@@ -378,6 +417,20 @@ package Praati::User::RatingStyles {
       ? rate_by_song_id($state, $song_id, $songname)
       : '-';
   }
+
+  sub _round_to_nearest_half {
+    sprintf('%.1f', sprintf('%.0f', 2.0 * $_[0]) / 2.0);
+  }
+}
+
+
+sub login_rate_logout {
+  my ($critic, $panel_name) = @_;
+
+  $critic
+    and $critic->login('critic')
+    and $critic->rate_songs($panel_name)
+    and $critic->logout();
 }
 
 
@@ -387,184 +440,141 @@ package Praati::User::RatingStyles {
 
 die 'Usage: test site' unless $ARGV[0];
 
-my $site       = $ARGV[0];
+my $site = $ARGV[0];
 
 
 # The admin user must be created first.
 
-my $admin1 = Praati::User->new_user($site,
-                                    'admin1@example.org',
-                                    'Admin One',
-                                    'pogjwviwjvalaook',
-                                    \&Praati::User::RatingStyles::do_not_rate);
+my $admin
+  = Praati::User->new_user($site,
+                           'admin@example.org',
+                           'Admin',
+                           'pogjwviwjvalaook',
+                           \&Praati::User::RatingStyles::do_not_rate);
 
 my $panel_name;
 do {
-  $admin1
-    and $admin1->login('admin')
-    and $panel_name = $admin1->ask_first_panel_name();
+  $admin
+    and $admin->login('admin')
+    and $panel_name = $admin->ask_first_panel_name();
 } or die 'Could not get panel name';
 
-$admin1->logout();
+$admin->logout();
 
-# XXX
-# critic One
+my $critic_fn;
 
-my $critic1 = Praati::User->new_user($site,
-                                    'critic1@example.org',
-                                    'One',
-                                    'jtreofnvwlcjiwe',
-                                    \&Praati::User::RatingStyles::do_not_rate);
+# XXX should the critics just be in some hash table and that could be iterated?
 
-sub Praati:: {}
-
-$critic1
-  and $critic1->login('critic')
-  and $critic1->rate_songs($panel_name)
-  and $critic1->logout();
+$critic_fn = \&Praati::User::RatingStyles::do_not_rate;
+my $lazy_critic = Praati::User->new_user($site,
+                                         'lazy.critic@example.org',
+                                         'Lazy Critic',
+                                         'jtreofnvwlcjiwe',
+			                 $critic_fn);
+login_rate_logout($lazy_critic, $panel_name);
 
 
-# XXX
-# critic Two
-
-my $critic2 = Praati::User->new_user($site,
-                                    'critic2@example.org',
-                                    'Two',
-                                    'ofwqhowqjbnmqwo',
-                                    \&Praati::User::RatingStyles::do_not_rate);
-
-$critic2
-  and $critic2->login('critic')
-  and $critic2->rate_songs($panel_name)
-  and $critic2->logout();
+$critic_fn = \&Praati::User::RatingStyles::rate_by_random;
+my $random_critic = Praati::User->new_user($site,
+                                           'random.critic@example.org',
+                                           'Random Critic',
+                                           'ofwqhowqjbnmqwo',
+			                   $critic_fn);
+login_rate_logout($random_critic, $panel_name);
 
 
-# XXX
-# critics Three and Four have exactly the same mind:
-
-my $critic3 = Praati::User->new_user($site,
-                                    'critic3@example.org',
-                                    'Three',
-                                    'aorlnwwjpwiaqnl',
-                                    \&Praati::User::RatingStyles::do_not_rate);
-
-my $critic4 = Praati::User->new_user($site,
-                                    'critic4@example.org',
-                                    'Four',
-                                    'rtrejptspaeiewm',
-                                    \&Praati::User::RatingStyles::do_not_rate);
-
-$critic3
-  and $critic3->login('critic')
-  and $critic3->rate_songs($panel_name)
-  and $critic3->logout();
-
-$critic4
-  and $critic4->login('critic')
-  and $critic4->rate_songs($panel_name)
-  and $critic4->logout();
+$critic_fn = \&Praati::User::RatingStyles::rate_by_song_id;
+my $song_id_critic = Praati::User->new_user($site,
+			                    'song.id.critic@example.org',
+			                    'Song Id Critic',
+			                    'aorlnwwjpwiaqnl',
+			                    $critic_fn);
+login_rate_logout($song_id_critic, $panel_name);
 
 
-# XXX
-# critic Five disagrees completely with critics Three and Four
-
-my $critic5 = Praati::User->new_user($site,
-                                    'critic5@example.org',
-                                    'Five',
-                                    'pagrlmrczxorjfk',
-                                    \&Praati::User::RatingStyles::do_not_rate);
-
-$critic5
-  and $critic5->login('critic')
-  and $critic5->rate_songs($panel_name)
-  and $critic5->logout();
-
-my $critic6 = Praati::User->new_user($site,
-                                    'critic6@example.org',
-                                    'Six',
-                                    'mbrldoqnjjjglws',
-                                    \&Praati::User::RatingStyles::do_not_rate);
+$critic_fn = \&Praati::User::RatingStyles::rate_by_songname_ascending;
+my $ascending_critic = Praati::User->new_user($site,
+			                      'ascending.critic@example.org',
+			                      'Ascending Critic',
+			                      'rtrejptspaeiewm',
+			                      $critic_fn);
+login_rate_logout($ascending_critic, $panel_name);
 
 
-# XXX
-# critic Six is lazier than others
-
-$critic6
-  and $critic6->login('critic')
-  and $critic6->rate_songs($panel_name)
-  and $critic6->logout();
-
-
-# XXX
-# critic Seven cares enough to not care
-
-my $critic7 = Praati::User->new_user($site,
-                                    'critic7@example.org',
-                                    'Seven',
-                                    'yoephvmreorejgr',
-                                    \&Praati::User::RatingStyles::rate_by_random);
-
-$critic7
-  and $critic7->login('critic')
-  and $critic7->rate_songs($panel_name)
-  and $critic7->logout();
+$critic_fn = \&Praati::User::RatingStyles::rate_by_songname_descending;
+my $descending_critic = Praati::User->new_user($site,
+                                               'descending.critic@example.org',
+                                               'Descending Critic',
+                                               'pagrlmrczxorjfk',
+                                               $critic_fn);
+login_rate_logout($descending_critic, $panel_name);
 
 
-# XXX
-# critic Eight is normal, but forgot one song
-
-my $critic8
-  = Praati::User->new_user($site,
-                           'critic8@example.org',
-                           'Eight',
-                           'trergrewtpavxwk',
-                           \&Praati::User::RatingStyles::rate_by_song_id);
-
-$critic8
-  and $critic8->login('critic')
-  and $critic8->rate_songs($panel_name)
-  and $critic8->logout();
+$critic_fn = \&Praati::User::RatingStyles::rate_sine;
+my $sine_critic = Praati::User->new_user($site,
+                                         'sine.critic6@example.org',
+                                         'Sine Critic',
+                                         'mbrldoqnjjjglws',
+					 $critic_fn);
+login_rate_logout($sine_critic, $panel_name);
 
 
-# XXX
-# critic Nine is different and comes to update many times
-
-my $critic9 = Praati::User->new_user($site,
-                                    'critic9@example.org',
-                                    'An Exceptionally Talented Critic',
-                                    '23jg403£¤3grbVG',
-                                    \&Praati::User::RatingStyles::rate_some);
-
-$critic9
-  and $critic9->login('critic')
-  and $critic9->rate_songs($panel_name)
-  and $critic9->logout()
-  and $critic9->login('critic')
-  and $critic9->rate_songs($panel_name)
-  and $critic9->logout()
-  and $critic9->login('critic')
-  and $critic9->rate_songs($panel_name)
-  and $critic9->logout();
+$critic_fn = \&Praati::User::RatingStyles::rate_cosine;
+my $cosine_critic = Praati::User->new_user($site,
+                                           'cosine.critic@example.org',
+                                           'Cosine Critic',
+                                           'yoephvmreorejgr',
+                                           $critic_fn);
+login_rate_logout($cosine_critic, $panel_name);
 
 
-# Admin One creates a listening session
+$critic_fn = \&Praati::User::RatingStyles::rate_all_but_one;
+my $except_one_critic = Praati::User->new_user($site,
+                                               'except.one.critic@example.org',
+                                               'Except One Critic',
+                                               'trergrewtpavxwk',
+			                       $critic_fn);
+login_rate_logout($except_one_critic, $panel_name);
+
+
+$critic_fn = \&Praati::User::RatingStyles::rate_only_one;
+my $only_one_critic = Praati::User->new_user($site,
+                                             'only.one.critic@example.org',
+                                             'Only One Critic',
+                                             '23jg403£¤3grbVG',
+                                             $critic_fn);
+login_rate_logout($only_one_critic, $panel_name);
+
+
+$critic_fn = \&Praati::User::RatingStyles::rate_some;
+my $rate_some_critic = Praati::User->new_user($site,
+                                              'rate.some.critic@example.org',
+                                              'Rate Some Critic',
+                                              '23jg403£¤3grbVG',
+                                              $critic_fn);
+
+login_rate_logout($rate_some_critic, $panel_name);
+
+
+# Random Admin creates a listening session
 
 # XXX these are wrong
 
-$admin1
-  and $admin1->login('admin')
-  and $admin1->create_new_listening_session($panel_name,
-                                            'Session A',
-                                            'asc')
-  and $admin1->check_listening_session_rating_counts([
-        [ 'Five'                             => 23, ],
-        [ 'Four'                             => 23, ],
-        [ 'One'                              => 23, ],
-        [ 'Seven'                            => 23, ],
-        [ 'Three'                            => 23, ],
-        [ 'Two'                              => 23, ],
-        [ 'Eight'                            => 22, ],
-        [ 'An Exceptionally Talented Critic' => 19, ],
-        [ 'Six'                              =>  9, ],
+# XXX how to calculate this
+my $songcount = 16;
+
+$admin
+  and $admin->login('admin')
+  and $admin->create_new_listening_session($panel_name, 'Session A', 'asc')
+  and $admin->check_listening_session_rating_counts([
+        [ 'Ascending Critic'  => $songcount     ],
+        [ 'Cosine Critic'     => $songcount     ],
+        [ 'Descending Critic' => $songcount     ],
+        [ 'Random Critic'     => $songcount     ],
+        [ 'Sine Critic'       => $songcount     ],
+        [ 'Song Id Critic'    => $songcount     ],
+        [ 'Except One Critic' => $songcount - 1 ],
+        [ 'Rate Some Critic'  => $songcount / 2 ],
+        [ 'Only One Critic'   => 1              ],
       ])
-  and $admin1->logout();
+  and $admin->logout();
