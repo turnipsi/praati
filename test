@@ -418,6 +418,15 @@ package Praati::User::RatingStyles {
       : '-';
   }
 
+  sub rate_good_only_hit_songs {
+    my ($state, $song_id, $songname) = @_;
+    if (rand() < ((29 * $song_id) % 23) / 100.0) {
+      return '10.0';
+    }
+
+    return '0.0';
+  }
+
   sub _round_to_nearest_half {
     sprintf('%.1f', sprintf('%.0f', 2.0 * $_[0]) / 2.0);
   }
@@ -475,12 +484,30 @@ login_rate_logout($lazy_critic, $panel_name);
 
 
 $critic_fn = \&Praati::User::RatingStyles::rate_by_random;
-my $random_critic = Praati::User->new_user($site,
-                                           'random.critic@example.org',
-                                           'Random Critic',
-                                           'ofwqhowqjbnmqwo',
-			                   $critic_fn);
-login_rate_logout($random_critic, $panel_name);
+my $random_critic_1 = Praati::User->new_user($site,
+                                             'random.critic.1@example.org',
+                                             'RC1',
+                                             'ofwqhowqjbnmqwo',
+			                     $critic_fn);
+login_rate_logout($random_critic_1, $panel_name);
+
+
+$critic_fn = \&Praati::User::RatingStyles::rate_by_random;
+my $random_critic_2 = Praati::User->new_user($site,
+                                             'random.critic.2@example.org',
+                                             'RC2',
+                                             'hjhwtrpjbtep345',
+			                     $critic_fn);
+login_rate_logout($random_critic_2, $panel_name);
+
+
+$critic_fn = \&Praati::User::RatingStyles::rate_by_random;
+my $random_critic_3 = Praati::User->new_user($site,
+                                             'random.critic.3@example.org',
+                                             'RC3',
+                                             'yBeBaYow5jjwR12',
+			                     $critic_fn);
+login_rate_logout($random_critic_3, $panel_name);
 
 
 $critic_fn = \&Praati::User::RatingStyles::rate_by_song_id;
@@ -541,7 +568,7 @@ $critic_fn = \&Praati::User::RatingStyles::rate_only_one;
 my $only_one_critic = Praati::User->new_user($site,
                                              'only.one.critic@example.org',
                                              'Only One Critic',
-                                             '23jg403£¤3grbVG',
+                                             '23jg403£A3grbVG',
                                              $critic_fn);
 login_rate_logout($only_one_critic, $panel_name);
 
@@ -550,10 +577,18 @@ $critic_fn = \&Praati::User::RatingStyles::rate_some;
 my $rate_some_critic = Praati::User->new_user($site,
                                               'rate.some.critic@example.org',
                                               'Rate Some Critic',
-                                              '23jg403£¤3grbVG',
+                                              'ytrfFwretfwEerv',
                                               $critic_fn);
-
 login_rate_logout($rate_some_critic, $panel_name);
+
+
+$critic_fn = \&Praati::User::RatingStyles::rate_good_only_hit_songs;
+my $hits_only_critic = Praati::User->new_user($site,
+                                              'hits.only@example.org',
+                                              'Hits Only',
+                                              'jGr5Yalg4t32gFb',
+                                              $critic_fn);
+login_rate_logout($hits_only_critic, $panel_name);
 
 
 # Random Admin creates a listening session
@@ -570,11 +605,14 @@ $admin
         [ 'Ascending Critic'  => $songcount     ],
         [ 'Cosine Critic'     => $songcount     ],
         [ 'Descending Critic' => $songcount     ],
-        [ 'Random Critic'     => $songcount     ],
+        [ 'Except One Critic' => $songcount - 1 ],
+	[ 'Hits Only'         => $songcount     ],
+        [ 'Only One Critic'   => 1              ],
+        [ 'RC1'               => $songcount     ],
+        [ 'RC2'               => $songcount     ],
+        [ 'RC3'               => $songcount     ],
+        [ 'Rate Some Critic'  => $songcount / 2 ],
         [ 'Sine Critic'       => $songcount     ],
         [ 'Song Id Critic'    => $songcount     ],
-        [ 'Except One Critic' => $songcount - 1 ],
-        [ 'Rate Some Critic'  => $songcount / 2 ],
-        [ 'Only One Critic'   => 1              ],
       ])
   and $admin->logout();
