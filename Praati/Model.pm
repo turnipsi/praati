@@ -1028,8 +1028,12 @@ package Praati::Model::SQLite::Correlation {
     my $sum_a_b_prod = sum(pairwise { $a * $b } @a, @b);
 
     my $numerator = $count * $sum_a_b_prod - $sum_a * $sum_b;
-    my $denom_1   = sqrt($count * $sum_a_sq - $sum_a ** 2);
-    my $denom_2   = sqrt($count * $sum_b_sq - $sum_b ** 2);
+
+    my $denom_1_p2 = $count * $sum_a_sq - $sum_a ** 2;
+    my $denom_1 = ($denom_1_p2 >= 0) ? sqrt($denom_1_p2) : 0;
+
+    my $denom_2_p2 = $count * $sum_b_sq - $sum_b ** 2;
+    my $denom_2 = ($denom_2_p2 >= 0) ? sqrt($denom_2_p2) : 0;
 
     ($denom_1 != 0 && $denom_2 != 0)
       ? $numerator / ($denom_1 * $denom_2)
