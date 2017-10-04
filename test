@@ -25,7 +25,7 @@ use warnings FATAL => qw(all);
 use CGI;
 use HTML::SimpleParse;
 use HTML::TableContentParser;
-use Test::More tests => 48;
+use Test::More tests => 71;
 use Test::WWW::Mechanize;
 
 use lib '.';
@@ -370,7 +370,7 @@ package Praati::User::RatingStyles {
     my @alphabets = ('a'..'z');
     for my $i (0 .. $#alphabets) {
       if ($alphabets[$i] eq $first_letter) {
-	return _round_to_nearest_half(10.0 * ($i / scalar(@alphabets)));
+        return _limit_rating(10.0 * ($i / scalar(@alphabets)));
       }
     }
 
@@ -383,12 +383,12 @@ package Praati::User::RatingStyles {
 
   sub rate_sine {
     my ($state, $song_id, $songname) = @_;
-    _round_to_nearest_half(10.0 * ((1.0 + sin($song_id / 7.0)) / 2));
+    _limit_rating(10.0 * ((1.0 + sin($song_id / 7.0)) / 2));
   }
 
   sub rate_cosine {
     my ($state, $song_id, $songname) = @_;
-    _round_to_nearest_half(10.0 * ((1.0 + cos($song_id / 7.0)) / 2));
+    _limit_rating(10.0 * ((1.0 + cos($song_id / 7.0)) / 2));
   }
 
   sub rate_all_but_one {
@@ -408,7 +408,7 @@ package Praati::User::RatingStyles {
       return '7.0';
     }
 
-    return '-';
+    '-';
   }
 
   sub rate_some {
@@ -424,7 +424,36 @@ package Praati::User::RatingStyles {
       return '10.0';
     }
 
-    return '0.0';
+    '0.0';
+  }
+
+  sub rate_mood_matters {
+    my ($state, $song_id, $songname) = @_;
+    if (!defined($state->{previous})) {
+      $state->{previous} = 5.0;
+    }
+
+    my $change = 4 * rand() - 2;
+    my $new_value = _limit_rating($state->{previous} + $change);
+
+    $state->{previous} = $new_value;
+
+    $new_value;
+  }
+
+  # XXX might be interesting, other distributions as well:
+  # sub rate_normal_distribution
+
+  sub rate_random_ascending {
+    my $value = rate_by_songname_ascending(@_);
+    $value += (rand() < 0.5 ? -1 : 1) * 5.0 * rand() * rand();
+    _limit_rating($value);
+  }
+
+  sub _limit_rating {
+    my $value = _round_to_nearest_half($_[0]);
+    ($value <  0.0) ?  0.0 :
+    ($value > 10.0) ? 10.0 : $value;
   }
 
   sub _round_to_nearest_half {
@@ -479,7 +508,7 @@ my $lazy_critic = Praati::User->new_user($site,
                                          'lazy.critic@example.org',
                                          'Lazy Critic',
                                          'jtreofnvwlcjiwe',
-			                 $critic_fn);
+                                         $critic_fn);
 login_rate_logout($lazy_critic, $panel_name);
 
 
@@ -488,7 +517,7 @@ my $random_critic_1 = Praati::User->new_user($site,
                                              'random.critic.1@example.org',
                                              'RC1',
                                              'ofwqhowqjbnmqwo',
-			                     $critic_fn);
+                                             $critic_fn);
 login_rate_logout($random_critic_1, $panel_name);
 
 
@@ -497,7 +526,7 @@ my $random_critic_2 = Praati::User->new_user($site,
                                              'random.critic.2@example.org',
                                              'RC2',
                                              'hjhwtrpjbtep345',
-			                     $critic_fn);
+                                             $critic_fn);
 login_rate_logout($random_critic_2, $panel_name);
 
 
@@ -506,25 +535,25 @@ my $random_critic_3 = Praati::User->new_user($site,
                                              'random.critic.3@example.org',
                                              'RC3',
                                              'yBeBaYow5jjwR12',
-			                     $critic_fn);
+                                             $critic_fn);
 login_rate_logout($random_critic_3, $panel_name);
 
 
 $critic_fn = \&Praati::User::RatingStyles::rate_by_song_id;
 my $song_id_critic = Praati::User->new_user($site,
-			                    'song.id.critic@example.org',
-			                    'Song Id Critic',
-			                    'aorlnwwjpwiaqnl',
-			                    $critic_fn);
+                                            'song.id.critic@example.org',
+                                            'Song Id Critic',
+                                            'aorlnwwjpwiaqnl',
+                                            $critic_fn);
 login_rate_logout($song_id_critic, $panel_name);
 
 
 $critic_fn = \&Praati::User::RatingStyles::rate_by_songname_ascending;
 my $ascending_critic = Praati::User->new_user($site,
-			                      'ascending.critic@example.org',
-			                      'Ascending Critic',
-			                      'rtrejptspaeiewm',
-			                      $critic_fn);
+                                              'ascending.critic@example.org',
+                                              'Ascending Critic',
+                                              'rtrejptspaeiewm',
+                                              $critic_fn);
 login_rate_logout($ascending_critic, $panel_name);
 
 
@@ -542,7 +571,7 @@ my $sine_critic = Praati::User->new_user($site,
                                          'sine.critic6@example.org',
                                          'Sine Critic',
                                          'mbrldoqnjjjglws',
-					 $critic_fn);
+                                         $critic_fn);
 login_rate_logout($sine_critic, $panel_name);
 
 
@@ -560,7 +589,7 @@ my $except_one_critic = Praati::User->new_user($site,
                                                'except.one.critic@example.org',
                                                'Except One Critic',
                                                'trergrewtpavxwk',
-			                       $critic_fn);
+                                               $critic_fn);
 login_rate_logout($except_one_critic, $panel_name);
 
 
@@ -591,12 +620,36 @@ my $hits_only_critic = Praati::User->new_user($site,
 login_rate_logout($hits_only_critic, $panel_name);
 
 
+$critic_fn = \&Praati::User::RatingStyles::rate_mood_matters;
+my $mood_matters_critic_1 = Praati::User->new_user($site,
+                                                   'mood.matters.1@example.org',
+                                                   'MM1',
+                                                   'gre4545ysfdpgeg',
+                                                   $critic_fn);
+login_rate_logout($mood_matters_critic_1, $panel_name);
+
+$critic_fn = \&Praati::User::RatingStyles::rate_mood_matters;
+my $mood_matters_critic_2 = Praati::User->new_user($site,
+                                                   'mood.matters.2@example.org',
+                                                   'MM2',
+                                                   '9653FBwKg2TKGDj',
+                                                   $critic_fn);
+login_rate_logout($mood_matters_critic_2, $panel_name);
+
+
+$critic_fn = \&Praati::User::RatingStyles::rate_random_ascending;
+my $rand_asc_critic = Praati::User->new_user($site,
+                                            'random.asc.critic@example.org',
+                                            'Random Ascending',
+                                            '54gdpgretp6GewF',
+                                            $critic_fn);
+login_rate_logout($rand_asc_critic, $panel_name);
+
+
 # Random Admin creates a listening session
 
-# XXX these are wrong
-
 # XXX how to calculate this
-my $songcount = 16;
+my $songcount = 207;
 
 $admin
   and $admin->login('admin')
@@ -606,8 +659,11 @@ $admin
         [ 'Cosine Critic'     => $songcount     ],
         [ 'Descending Critic' => $songcount     ],
         [ 'Except One Critic' => $songcount - 1 ],
-	[ 'Hits Only'         => $songcount     ],
+        [ 'Hits Only'         => $songcount     ],
+        [ 'MM1'               => $songcount     ],
+        [ 'MM2'               => $songcount     ],
         [ 'Only One Critic'   => 1              ],
+        [ 'Random Ascending'  => $songcount     ],
         [ 'RC1'               => $songcount     ],
         [ 'RC2'               => $songcount     ],
         [ 'RC3'               => $songcount     ],
