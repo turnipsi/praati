@@ -118,7 +118,7 @@ package Praati::View {
 
 .audio_player_div {
   position: fixed;
-  top: 10px;
+  bottom: 10px;
   right: 10px;
 }
 
@@ -379,21 +379,28 @@ EOF
     my $user_rating_correlations
       = table_user_rating_correlations($listening_session_id, $event_number);
 
-    my $page = audio_player($song_id)
-               . h1($title)
-               . $rating_stats
-               . $ratings_for_song
-               . $user_rating_correlations;
+    my $header_title = t('Listening event for [_1]',
+			 $event_and_song->{song_name});
+    my $js = Praati::View::JS::panel_listening_event_js();
+    my @start_html_opts = (-script => $js,
+			   -style  => { -code => css(), },
+                           -title  => "Praati - $header_title");
 
     query(q{ update listening_events
                set listening_event_shown = listening_event_shown + 1
                  where listening_event_id = ? },
           $event_and_song->{listening_event_id});
 
-    my $js = Praati::View::JS::panel_listening_event_js();
-    page(t('Listening event for [_1]', $title),
-         $page,
-	 -script => $js);
+    my $page = start_html(@start_html_opts)
+               . audio_player($song_id)
+               . h1($title)
+               . $rating_stats
+               . $ratings_for_song
+               . $user_rating_correlations
+               . end_html()
+               . "\n";
+
+    response(page => $page);
   }
 
   sub page_listening_session_overview {
