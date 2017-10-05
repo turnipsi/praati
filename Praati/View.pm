@@ -113,8 +113,8 @@ package Praati::View {
 
 /* general */
 
-.next_song_link     { padding-left:  1em; }
-.previous_song_link { padding-right: 1em; }
+#next_song_link     { padding-left:  1em; }
+#previous_song_link { padding-right: 1em; }
 
 .audio_player_div {
   position: fixed;
@@ -390,8 +390,10 @@ EOF
                  where listening_event_id = ? },
           $event_and_song->{listening_event_id});
 
+    my $js = Praati::View::JS::panel_listening_event_js();
     page(t('Listening event for [_1]', $title),
-         $page);
+         $page,
+	 -script => $js);
   }
 
   sub page_listening_session_overview {
@@ -1057,14 +1059,14 @@ EOF
 
     my $previous_link_html
       = $previous_link
-          ? a({ -class => 'previous_song_link',
+          ? a({ -id    => 'previous_song_link',
                 -href  => $previous_link },
               '<')
           : '';
 
     my $next_link_html
       = $next_link
-          ? a({ -class => 'next_song_link',
+          ? a({ -id    => 'next_song_link',
                 -href  => $next_link },
               '>')
           : '';
@@ -1154,6 +1156,28 @@ package Praati::View::JS {
                  where panel_id = ?
                order by album_year, album_name, track_number; },
             $panel_id);
+  }
+
+  sub panel_listening_event_js {
+    <<'EOF';
+window.addEventListener('load', function () {
+  var audio_player = document.getElementById('audio_player');
+
+  if (!audio_player) {
+    alert('Could not find the audio player!');
+  } else {
+    var next_song_link = document.getElementById('next_song_link');
+    if (next_song_link) {
+      audio_player.addEventListener('ended', function (event) {
+        // Use a timeout here, in case something was wrong and the
+        // "ended"-signal happened prematurely, so we would not immediately
+        // hop to the winning song, giving some time to react.
+        setTimeout(function() { next_song_link.click(); }, 1000);
+      });
+    }
+  }
+});
+EOF
   }
 
   sub panel_ratings_by_user_js {
@@ -1383,7 +1407,6 @@ window.addEventListener('load', function () {
   } else {
     changePlaybackSong(null);
     audio_player.addEventListener('ended', function (event) {
-      // maybe: setTimeout(3, function() { changePlaybackSong(null); });
       changePlaybackSong(null);
     });
 
