@@ -117,9 +117,13 @@ package Praati::View {
 #previous_song_link { padding-right: 1em; }
 
 .audio_player_div {
-  position: fixed;
-  bottom: 10px;
-  right: 10px;
+  position:	fixed;
+  right:	10px;
+  top:		10px;
+}
+
+#ratings_info {
+  display: flex;
 }
 
 .rating_stats {
@@ -145,8 +149,8 @@ package Praati::View {
 
 div.ratings_for_song {
   float:         left;
-  width:         50%;
   padding-right: 1em;
+  min-width:     40em;
 }
 
 table.ratings_for_song {
@@ -394,9 +398,10 @@ EOF
     my $page = start_html(@start_html_opts)
                . audio_player($song_id)
                . h1($title)
-               . $rating_stats
-               . $ratings_for_song
-               . $user_rating_correlations
+               . div({ -id => 'ratings_info' },
+                     $rating_stats
+                     . $ratings_for_song
+                     . $user_rating_correlations)
                . end_html()
                . "\n";
 
