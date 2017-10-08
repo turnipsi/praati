@@ -194,7 +194,7 @@ table.ratings_for_song {
   padding-top:    0.2em;
 }
 
-.user_rating_correlations {
+#user_rating_correlations_table {
   border-collapse: collapse;
 }
 
@@ -833,12 +833,16 @@ EOF
     my $empty_cell = td({ -class => 'no_correlation' },
                         '&mdash;');
 
-    table({ -class => 'user_rating_correlations' },
-          Tr([ map {
-                 my $i = $_;
-                 concat(map { $table[$i][$_] // $empty_cell }
-                          (0 .. scalar(@userlist)));
-               } (0 .. scalar(@userlist))]));
+    div({ -class => 'user_rating_correlations' },
+        a({ -href => '', -id => 'user_rating_correlations_toggle' },
+          t('Rating correlations')),
+	table({ -id => 'user_rating_correlations_table' },
+	      Tr([ map {
+		     my $i = $_;
+		     concat(map { $table[$i][$_] // $empty_cell }
+			      (0 .. scalar(@userlist)));
+		   } (0 .. scalar(@userlist))])));
+
   }
 
   sub table_user_rating_counts {
@@ -1174,6 +1178,16 @@ package Praati::View::JS {
     <<'EOF';
 window.addEventListener('load', function () {
   var audio_player = document.getElementById('audio_player');
+  var corr_link = document.getElementById('user_rating_correlations_toggle');
+  var urc_table = document.getElementById("user_rating_correlations_table");
+
+  function toggle_element_visibility(element) {
+    if (element.style.display === 'none') {
+      element.style.display = 'block';
+    } else {
+      element.style.display = 'none';
+    }
+  }
 
   if (!audio_player) {
     alert('Could not find the audio player!');
@@ -1187,6 +1201,17 @@ window.addEventListener('load', function () {
         setTimeout(function() { next_song_link.click(); }, 1000);
       });
     }
+  }
+
+  if (!corr_link) {
+    alert('Could not find the user rating correlations table link!');
+  } else if (!urc_table) {
+    alert('Could not find the user rating correlations table!');
+  } else {
+    corr_link.addEventListener('click', function(event) {
+      event.preventDefault();
+      toggle_element_visibility(urc_table);
+    });
   }
 });
 EOF

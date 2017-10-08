@@ -127,6 +127,8 @@ package Praati::View::L10N::fi {
     'Listening session overview for "[_1]".'
        => 'Kuuntelusession yleiskatsaus sessiolle "[_1]".',
 
+    'Rating correlations' => 'Arvostelukorrelaatiot',
+
     'Password is missing.'    => 'Salasana puuttuu.',
     'Passwords do not match.' => 'Salasanat eivät täsmää.',
   );
