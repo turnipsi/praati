@@ -105,16 +105,13 @@ package Praati::View {
 
 .playback_song {
   background-color: lightgreen;
-};
+}
 
 /*
  * listening event styles
  */
 
 /* general */
-
-#next_song_link     { padding-left:  1em; }
-#previous_song_link { padding-right: 1em; }
 
 .audio_player_div {
   position:	fixed;
@@ -371,10 +368,10 @@ EOF
     my $song_id              = $event_and_song->{song_id};
 
     my $title = song_title_for_listening_event($event_and_song,
-                                               $event_number,
                                                $listening_session_id);
 
     my $rating_stats = table_song_rating_stats($listening_session_id,
+					       $event_number,
                                                $song_id);
 
     my $ratings_for_song = table_ratings_for_song($listening_session_id,
@@ -766,7 +763,7 @@ EOF
   }
 
   sub table_song_rating_stats {
-    my ($listening_session_id, $song_id) = @_;
+    my ($listening_session_id, $event_number, $song_id) = @_;
 
     my $stats
       = one_record(q{ select * from ls_song_rating_results
@@ -778,6 +775,25 @@ EOF
     my $color_for_normalized_value
       = color_for_rating_value($stats->{song_normalized_rating_value_avg},
                                1.0);
+
+    my $previous_link = link_uri_if_event_exists($event_number - 1,
+                                                 $listening_session_id);
+    my $next_link     = link_uri_if_event_exists($event_number + 1,
+                                                 $listening_session_id);
+
+    my $previous_link_html
+      = $previous_link
+          ? a({ -id    => 'previous_song_link',
+                -href  => $previous_link },
+              e('<-- '))
+          : '';
+
+    my $next_link_html
+      = $next_link
+          ? a({ -id    => 'next_song_link',
+                -href  => $next_link },
+              e(' -->'))
+          : '';
 
     table({ -class => 'rating_stats' },
           Tr([ td({ -class => 'song_normalized_rating_value_avg',
@@ -791,7 +807,9 @@ EOF
                           $stats->{song_normalized_rating_value_stdev})),
 
                td(sprintf('(&sigma; = %.2f)',
-                          $stats->{song_rating_value_stdev})) ]));
+                          $stats->{song_rating_value_stdev})),
+
+	       td(sprintf('%s%s', $previous_link_html, $next_link_html)) ]));
   }
 
   sub table_user_rating_correlations {
@@ -1066,26 +1084,7 @@ EOF
   }
 
   sub song_title_for_listening_event {
-    my ($event_and_song, $event_number, $listening_session_id) = @_;
-
-    my $previous_link = link_uri_if_event_exists($event_number - 1,
-                                                 $listening_session_id);
-    my $next_link     = link_uri_if_event_exists($event_number + 1,
-                                                 $listening_session_id);
-
-    my $previous_link_html
-      = $previous_link
-          ? a({ -id    => 'previous_song_link',
-                -href  => $previous_link },
-              '<')
-          : '';
-
-    my $next_link_html
-      = $next_link
-          ? a({ -id    => 'next_song_link',
-                -href  => $next_link },
-              '>')
-          : '';
+    my ($event_and_song, $listening_session_id) = @_;
 
     my $panel_id
       = one_value(q{ select panel_id from listening_sessions where
@@ -1093,14 +1092,12 @@ EOF
                   $listening_session_id);
     my $show_artist_name = !is_panel_single_artist($panel_id);
 
-    sprintf('%s%d. %s %s%s',
-            $previous_link_html,
+    sprintf('%d. %s %s',
             e($event_and_song->{song_position}),
             ($show_artist_name
                ? e($event_and_song->{artist_name}).':'
                : ''),
-            e($event_and_song->{song_name}),
-            $next_link_html);
+            e($event_and_song->{song_name}));
   }
 
   sub count_unrated_songs {
