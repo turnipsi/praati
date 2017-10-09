@@ -834,7 +834,7 @@ EOF
                         '&mdash;');
 
     div({ -class => 'user_rating_correlations' },
-        a({ -href => '', -id => 'user_rating_correlations_toggle' },
+        a({ -href => '#', -id => 'user_rating_correlations_toggle' },
           t('Rating correlations')),
 	table({ -id => 'user_rating_correlations_table' },
 	      Tr([ map {
@@ -1180,19 +1180,68 @@ window.addEventListener('load', function () {
   var audio_player = document.getElementById('audio_player');
   var corr_link = document.getElementById('user_rating_correlations_toggle');
   var urc_table = document.getElementById("user_rating_correlations_table");
+  var show_correlations;
 
-  function toggle_element_visibility(element) {
-    if (element.style.display === 'none') {
+  function getQueryVariable(variable) {
+    try {
+      var query = window.location.search.substring(1);
+      var vars = query.split('&');
+      for (var i = 0; i < vars.length; i++) {
+        var pair = vars[i].split('=');
+        if (pair[0] === variable) { return pair[1]; }
+      }
+    } catch (ex) {
+      alert('error looking up query variable ' + variable + ' : ' + ex);
+    }
+
+    return false;
+  }
+
+  function set_element_visibility(element, visible) {
+    if (visible) {
       element.style.display = 'block';
     } else {
       element.style.display = 'none';
     }
   }
 
+  function set_correlations_visibility(visible) {
+    if (visible) {
+      show_correlations = '1';
+      set_element_visibility(urc_table, true);
+    } else {
+      show_correlations = '0';
+      set_element_visibility(urc_table, false);
+    }
+  }
+
+  if (getQueryVariable('show_correlations') === '0') {
+    set_correlations_visibility(false);
+  } else {
+    set_correlations_visibility(true);
+  }
+
+  var previous_song_link = document.getElementById('previous_song_link');
+  var next_song_link = document.getElementById('next_song_link');
+
+  if (previous_song_link) {
+    previous_song_link.addEventListener('click', function(event) {
+      var link_target = previous_song_link.getAttribute('href');
+      var url_params = "&show_correlations=" + show_correlations;
+      previous_song_link.setAttribute('href', link_target + url_params);
+    });
+  }
+  if (next_song_link) {
+    next_song_link.addEventListener('click', function(event) {
+      var link_target = next_song_link.getAttribute('href');
+      var url_params = "&show_correlations=" + show_correlations;
+      next_song_link.setAttribute('href', link_target + url_params);
+    });
+  }
+
   if (!audio_player) {
     alert('Could not find the audio player!');
   } else {
-    var next_song_link = document.getElementById('next_song_link');
     if (next_song_link) {
       audio_player.addEventListener('ended', function (event) {
         // Use a timeout here, in case something was wrong and the
@@ -1209,8 +1258,13 @@ window.addEventListener('load', function () {
     alert('Could not find the user rating correlations table!');
   } else {
     corr_link.addEventListener('click', function(event) {
+      // this should toggle the correlations visibility
       event.preventDefault();
-      toggle_element_visibility(urc_table);
+      if (show_correlations === '0') {
+        set_correlations_visibility(true);
+      } else {
+        set_correlations_visibility(false);
+      }
     });
   }
 });
@@ -1249,7 +1303,7 @@ window.addEventListener('load', function () {
     }
 
     var submit_buttons = document.getElementsByName('send_ratings');
-    for (i = 0; i < submit_buttons.length; i++) {
+    for (var i = 0; i < submit_buttons.length; i++) {
       var button = submit_buttons[i];
       if (enable_or_disable) {
         button.disabled = false;
@@ -1323,7 +1377,7 @@ window.addEventListener('load', function () {
       new_song_id_element.className = 'playback_song';
     }
 
-    for (i = 0; i < playlist_song_ids.length; i++) {
+    for (var i = 0; i < playlist_song_ids.length; i++) {
       if (playback_song_id === playlist_song_ids[i]) {
         current_playback_song_index = i;
         break;
@@ -1420,7 +1474,7 @@ window.addEventListener('load', function () {
     });
 
     var select_inputs = ratings_form.getElementsByTagName('select');
-    for (i = 0; i < select_inputs.length; i++) {
+    for (var i = 0; i < select_inputs.length; i++) {
       var input = select_inputs[i];
       input.addEventListener('change', function(event) {
         changeSubmitButtonsState(true);
@@ -1428,7 +1482,7 @@ window.addEventListener('load', function () {
     }
 
     var form_inputs = ratings_form.getElementsByTagName('input');
-    for (i = 0; i < form_inputs.length; i++) {
+    for (var i = 0; i < form_inputs.length; i++) {
       var input = form_inputs[i];
       if (input.type !== 'text') { continue; }
       input.addEventListener('input', function(event) {
@@ -1448,7 +1502,7 @@ window.addEventListener('load', function () {
     });
 
     if (ratings_form) {
-      for (i = 0; i < playlist_song_ids.length; i++) {
+      for (var i = 0; i < playlist_song_ids.length; i++) {
         var song_id = playlist_song_ids[i];
         var song_link_id = 'songs[' + song_id + '].playback_link';
         var html_song_link = document.getElementById(song_link_id);
