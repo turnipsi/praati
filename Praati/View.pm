@@ -380,12 +380,19 @@ EOF
     my $user_rating_correlations
       = table_user_rating_correlations($listening_session_id, $event_number);
 
+    my $album_chart
+      = table_album_chart($listening_session_id, $event_number);
+
     my $header_title = t('Listening event for [_1]',
 			 $event_and_song->{song_name});
     my $js = Praati::View::JS::panel_listening_event_js();
     my @start_html_opts = (-script => $js,
 			   -style  => { -code => css(), },
                            -title  => "Praati - $header_title");
+
+    my $stats_div = div({ -id => 'cumulative_panel_statistics' },
+			$user_rating_correlations
+			. $album_chart);
 
     query(q{ update listening_events
                set listening_event_shown = listening_event_shown + 1
@@ -398,7 +405,7 @@ EOF
                . div({ -id => 'ratings_info' },
                      $rating_stats
                      . $ratings_for_song
-                     . $user_rating_correlations)
+                     . $stats_div)
                . end_html()
                . "\n";
 
@@ -860,7 +867,37 @@ EOF
 		     concat(map { $table[$i][$_] // $empty_cell }
 			      (0 .. scalar(@userlist)));
 		   } (0 .. scalar(@userlist))])));
+  }
 
+  sub table_album_chart {
+    my ($listening_session_id, $event_number) = @_;
+
+    my $user_rating_counts
+      = records(q{ select album_name, album_year,
+                     avg(song_normalized_rating_value_avg) as album_rating
+                       from listening_events_up_to_event_number
+                         join ls_song_positions
+                           using (listening_session_id, song_position)
+                         join ls_song_rating_results
+                           using (listening_session_id, song_id)
+                         join songs_in_albums using (song_id)
+                         join albums using (album_id)
+		   where listening_session_id = ?
+                     and up_to_event_number = ?
+		   group by album_id
+                   order by album_rating desc, album_year, album_name; },
+	     $listening_session_id,
+	     $event_number);
+
+    div({ -class => 'album_chart' },
+        a({ -href => '#', -id => 'album_chart_toggle' },
+          t('Album chart')),
+        table({ -id => 'album_chart_table' },
+              Tr([ map {
+                     td([ $_->{album_name},
+		          $_->{album_year},
+			  sprintf('%.2f', $_->{album_rating}) ])
+                   } @$user_rating_counts ])));
   }
 
   sub table_user_rating_counts {
