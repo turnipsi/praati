@@ -191,6 +191,16 @@ table.ratings_for_song {
   padding-top:    0.2em;
 }
 
+#album_chart_table td {
+  border-style: solid;
+  border-width: 0.1em;
+  padding:      0.2em;
+}
+
+#album_chart_table {
+  border-collapse: collapse;
+}
+
 #user_rating_correlations_table {
   border-collapse: collapse;
 }
@@ -893,11 +903,14 @@ EOF
         a({ -href => '#', -id => 'album_chart_toggle' },
           t('Album chart')),
         table({ -id => 'album_chart_table' },
-              Tr([ map {
-                     td([ $_->{album_name},
-		          $_->{album_year},
-			  sprintf('%.2f', $_->{album_rating}) ])
-                   } @$user_rating_counts ])));
+              map {
+                my $rating_color
+		  = color_for_rating_value($_->{album_rating}, 1.0);
+                Tr({ -style => "background-color: $rating_color;" },
+                   td([ e($_->{album_year}),
+			e($_->{album_name}),
+			sprintf('%.2f', $_->{album_rating}) ]));
+              } @$user_rating_counts));
   }
 
   sub table_user_rating_counts {
@@ -1213,8 +1226,13 @@ package Praati::View::JS {
 window.addEventListener('load', function () {
   var audio_player = document.getElementById('audio_player');
   var corr_link = document.getElementById('user_rating_correlations_toggle');
+  var album_chart_link = document.getElementById('album_chart_toggle');
   var urc_table = document.getElementById("user_rating_correlations_table");
-  var show_correlations;
+  var ac_table = document.getElementById("album_chart_table");
+  var show_album_chart, show_correlations;
+
+  // XXX functionality relating to show_album_chart and show_correlations
+  // XXX are mostly copy-and-paste
 
   function getQueryVariable(variable) {
     try {
@@ -1239,6 +1257,16 @@ window.addEventListener('load', function () {
     }
   }
 
+  function set_album_chart_visibility(visible) {
+    if (visible) {
+      show_album_chart = '1';
+      set_element_visibility(ac_table, true);
+    } else {
+      show_album_chart = '0';
+      set_element_visibility(ac_table, false);
+    }
+  }
+
   function set_correlations_visibility(visible) {
     if (visible) {
       show_correlations = '1';
@@ -1255,20 +1283,28 @@ window.addEventListener('load', function () {
     set_correlations_visibility(true);
   }
 
+  if (getQueryVariable('show_album_chart') === '0') {
+    set_album_chart_visibility(false);
+  } else {
+    set_album_chart_visibility(true);
+  }
+
   var previous_song_link = document.getElementById('previous_song_link');
   var next_song_link = document.getElementById('next_song_link');
 
   if (previous_song_link) {
     previous_song_link.addEventListener('click', function(event) {
       var link_target = previous_song_link.getAttribute('href');
-      var url_params = "&show_correlations=" + show_correlations;
+      var url_params = "&show_correlations=" + show_correlations
+                         + "&show_album_chart=" + show_album_chart;
       previous_song_link.setAttribute('href', link_target + url_params);
     });
   }
   if (next_song_link) {
     next_song_link.addEventListener('click', function(event) {
       var link_target = next_song_link.getAttribute('href');
-      var url_params = "&show_correlations=" + show_correlations;
+      var url_params = "&show_correlations=" + show_correlations
+                         + "&show_album_chart=" + show_album_chart;
       next_song_link.setAttribute('href', link_target + url_params);
     });
   }
@@ -1298,6 +1334,22 @@ window.addEventListener('load', function () {
         set_correlations_visibility(true);
       } else {
         set_correlations_visibility(false);
+      }
+    });
+  }
+
+  if (!album_chart_link) {
+    alert('Could not find the album chart table link!');
+  } else if (!ac_table) {
+    alert('Could not find the album chart table!');
+  } else {
+    album_chart_link.addEventListener('click', function(event) {
+      // this should toggle the album chart visibility
+      event.preventDefault();
+      if (show_album_chart === '0') {
+        set_album_chart_visibility(true);
+      } else {
+        set_album_chart_visibility(false);
       }
     });
   }
