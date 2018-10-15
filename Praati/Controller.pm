@@ -504,7 +504,16 @@ package Praati::Controller {
                                                where song_id = ?; },
                                           $Q->url_param('song_id'));
 
-    Praati::View::play_song($song);
+    # XXX redirect hack
+    use File::Basename qw(basename);
+    use URI::Escape;
+    my $static_song_url = $Q->url(-base => 1) . "/musat/"
+                            . uri_escape_utf8(basename($song->{song_filepath}));
+    warn '>>> ' . $static_song_url;
+    response(redirect_uri => $static_song_url,
+             status       => 301);
+    # original code:
+    # Praati::View::play_song($song);
   }
 
   sub unauthorized_access_controller {
