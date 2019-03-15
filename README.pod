@@ -125,6 +125,7 @@ Set permissions for C</etc/rc.d/praati>:
 
 Modify C</etc/rc.conf.local> to contain the following:
 
+    httpd_flags=""
     pkg_scripts="praati"
 
 Setup C</etc/httpd.conf> like this:
