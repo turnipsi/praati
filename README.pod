@@ -133,8 +133,8 @@ Setup C</etc/httpd.conf> like this:
 	    listen on * port 80
 
 	    location "/praati/*" {
-		    root strip 1
 		    fastcgi socket "/run/praati/praati.sock"
+		    request strip 1
 	    }
     }
 
