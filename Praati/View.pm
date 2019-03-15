@@ -699,7 +699,7 @@ EOF
                            $song_with_rating->{song_rating_value_value});
     my $comment
       = textfield(-name      => $comment_form_id,
-                  -size      => 60,
+                  -size      => 80,
                   -maxlength => 900,
                   -value     => $song_with_rating->{song_rating_comment} // '');
 
