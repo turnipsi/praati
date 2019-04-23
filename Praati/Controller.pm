@@ -109,6 +109,12 @@ package Praati::Controller {
             listening_event_controller();
           }
         :
+      m|^/listening_sessions/analysis$|
+        ? do {
+            restrict_to_roles( qw(admin) );
+            listening_session_analysis_controller();
+          }
+        :
       m|^/listening_sessions/new$|
         ? do {
             restrict_to_roles( qw(admin) );
@@ -260,6 +266,14 @@ package Praati::Controller {
           $Q->url_param('listening_event_id'));
 
     Praati::View::page_listening_event($event_and_song);
+  }
+
+  sub listening_session_analysis_controller {
+    my $listening_session
+      = one_record_or_no_such_page(q{ select * from listening_sessions
+                                        where listening_session_id = ?; },
+                                   $Q->url_param('listening_session_id'));
+    Praati::View::page_listening_session_analysis($listening_session);
   }
 
   sub listening_session_overview_controller {

@@ -127,6 +127,9 @@ package Praati::View::L10N::fi {
     'Listening session overview for "[_1]".'
        => 'Kuuntelusession yleiskatsaus sessiolle "[_1]".',
 
+    'Listening session analysis for "[_1]".'
+       => 'Kuuntelusession tulokset sessiolle "[_1]".',
+
     'Rating correlations' => 'Arvostelukorrelaatiot',
     'Album chart' => 'Albumilista',
 

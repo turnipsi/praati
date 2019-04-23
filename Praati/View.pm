@@ -422,6 +422,49 @@ EOF
     response(page => $page);
   }
 
+  sub page_listening_session_analysis {
+    my ($listening_session) = @_;
+
+    my %username_short_forms = make_username_short_forms(qw(Eki Ernest Humma));
+    warn join(' ' => %username_short_forms);
+
+    my $songs_with_positions = records(
+          q{ select * from ls_song_positions
+               join songinfos using (song_id)
+               join ls_song_rating_results using (song_id, listening_session_id)
+             where listening_session_id = ?
+             order by song_position; },
+          $listening_session->{listening_session_id});
+
+    my $title = t('Listening session analysis for "[_1]".',
+                  e($listening_session->{listening_session_name}));
+
+    my @song_htmls
+      = map { tablerow_analysis_song($_, \%username_short_forms) }
+          @$songs_with_positions;
+    my $content = p($title) . table(@song_htmls);
+
+    page($title, $content);
+  }
+
+  sub tablerow_analysis_song {
+    my ($song) = @_;
+
+    my $color_for_normalized_value
+      = color_for_rating_value($song->{song_normalized_rating_value_avg},
+                               0.5);
+
+    Tr({ -style => "background-color: $color_for_normalized_value;" },
+       td($song->{song_position}),
+       td($song->{artist_name}),
+       td($song->{song_name}),
+       td($song->{album_name}),
+       td(sprintf('%.3f', $song->{song_normalized_rating_value_avg})),
+       td(sprintf('%.3f', $song->{song_rating_value_avg})),
+       td(sprintf('%.3f', $song->{song_normalized_rating_value_stdev})),
+       td(sprintf('%.3f', $song->{song_rating_value_stdev})));
+  }
+
   sub page_listening_session_overview {
     my ($listening_session) = @_;
     my $title = t('Listening session overview for "[_1]".',
