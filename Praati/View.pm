@@ -114,9 +114,9 @@ package Praati::View {
 /* general */
 
 .audio_player_div {
-  position:	fixed;
-  right:	10px;
-  top:		10px;
+  position:     fixed;
+  right:        10px;
+  top:          10px;
 }
 
 #ratings_info {
@@ -381,7 +381,7 @@ EOF
                                                $listening_session_id);
 
     my $rating_stats = table_song_rating_stats($listening_session_id,
-					       $event_number,
+                                               $event_number,
                                                $song_id);
 
     my $ratings_for_song = table_ratings_for_song($listening_session_id,
@@ -394,15 +394,15 @@ EOF
       = table_album_chart($listening_session_id, $event_number);
 
     my $header_title = t('Listening event for [_1]',
-			 $event_and_song->{song_name});
+                         $event_and_song->{song_name});
     my $js = Praati::View::JS::panel_listening_event_js();
     my @start_html_opts = (-script => $js,
-			   -style  => { -code => css(), },
+                           -style  => { -code => css(), },
                            -title  => "Praati - $header_title");
 
     my $stats_div = div({ -id => 'cumulative_panel_statistics' },
-			$user_rating_correlations
-			. $album_chart);
+                        $user_rating_correlations
+                        . $album_chart);
 
     query(q{ update listening_events
                set listening_event_shown = listening_event_shown + 1
@@ -947,7 +947,7 @@ EOF
                td(sprintf('(&sigma; = %.2f)',
                           $stats->{song_rating_value_stdev})),
 
-	       td(sprintf('%s%s', $previous_link_html, $next_link_html)) ]));
+               td(sprintf('%s%s', $previous_link_html, $next_link_html)) ]));
   }
 
   sub table_user_rating_correlations {
@@ -992,12 +992,12 @@ EOF
     div({ -class => 'user_rating_correlations' },
         a({ -href => '#', -id => 'user_rating_correlations_toggle' },
           t('Rating correlations')),
-	table({ -id => 'user_rating_correlations_table' },
-	      Tr([ map {
-		     my $i = $_;
-		     concat(map { $table[$i][$_] // $empty_cell }
-			      (0 .. scalar(@userlist)));
-		   } (0 .. scalar(@userlist))])));
+        table({ -id => 'user_rating_correlations_table' },
+              Tr([ map {
+                     my $i = $_;
+                     concat(map { $table[$i][$_] // $empty_cell }
+                              (0 .. scalar(@userlist)));
+                   } (0 .. scalar(@userlist))])));
   }
 
   sub table_album_chart {
@@ -1013,12 +1013,12 @@ EOF
                            using (listening_session_id, song_id)
                          join songs_in_albums using (song_id)
                          join albums using (album_id)
-		   where listening_session_id = ?
+                   where listening_session_id = ?
                      and up_to_event_number = ?
-		   group by album_id
+                   group by album_id
                    order by album_rating desc, album_year, album_name; },
-	     $listening_session_id,
-	     $event_number);
+             $listening_session_id,
+             $event_number);
 
     div({ -class => 'album_chart' },
         a({ -href => '#', -id => 'album_chart_toggle' },
@@ -1026,11 +1026,11 @@ EOF
         table({ -id => 'album_chart_table' },
               map {
                 my $rating_color
-		  = color_for_rating_value($_->{album_rating}, 1.0);
+                  = color_for_rating_value($_->{album_rating}, 1.0);
                 Tr({ -style => "background-color: $rating_color;" },
                    td([ e($_->{album_year}),
-			e($_->{album_name}),
-			sprintf('%.2f', $_->{album_rating}) ]));
+                        e($_->{album_name}),
+                        sprintf('%.2f', $_->{album_rating}) ]));
               } @$user_rating_counts));
   }
 

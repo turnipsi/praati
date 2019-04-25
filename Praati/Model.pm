@@ -25,11 +25,11 @@ package Praati::Model {
   BEGIN {
     our @EXPORT_OK = qw(columns
                         last_insert_id
-		        one_record
-		        one_value
-		        query
-		        records
-		        rows);
+                        one_record
+                        one_value
+                        query
+                        records
+                        rows);
   }
 
   use Praati;
