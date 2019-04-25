@@ -425,44 +425,122 @@ EOF
   sub page_listening_session_analysis {
     my ($listening_session) = @_;
 
-    my %username_short_forms = make_username_short_forms(qw(Eki Ernest Humma));
-    warn join(' ' => %username_short_forms);
+    my ($listening_session_id) = $listening_session->{listening_session_id};
 
     my $songs_with_positions = records(
-          q{ select * from ls_song_positions
-               join songinfos using (song_id)
-               join ls_song_rating_results using (song_id, listening_session_id)
-             where listening_session_id = ?
-             order by song_position; },
-          $listening_session->{listening_session_id});
+      q{ select * from ls_song_positions
+           join songinfos using (song_id)
+           join ls_song_rating_results using (song_id, listening_session_id)
+         where listening_session_id = ?
+         order by song_position; },
+      $listening_session_id);
+
+    my $song_ratings
+      = records(q{ select user_id,
+                          song_id,
+                          song_rating_value_value,
+                          song_rating_normalized_value_value
+                     from ls_song_ratings_with_set_values_and_sessions
+                       join users using (user_id)
+                   where listening_session_id = ?
+                   order by song_rating_normalized_value_value desc,
+                            song_rating_value_value desc; },
+                $listening_session_id);
+
+    my $users = records(q{ select distinct user_id, user_name
+                             from ls_song_ratings_with_sessions
+                               join users using (user_id)
+                           where listening_session_id = ? },
+                        $listening_session_id);
+
+    my @usernames = map { $_->{user_name} } @$users;
+    my %username_short_forms = make_username_short_forms(@usernames);
+    $users = [ sort {
+                 $username_short_forms{ $a->{user_name} }
+                   cmp $username_short_forms{ $b->{user_name} }
+               } @$users ];
+
+    my @user_shortnames_and_ids
+      = map {
+          {
+            shortname => $username_short_forms{ $_->{user_name} },
+            user_id   => $_->{user_id},
+          }
+        } @$users;
+
+    my @userlist = map { $_->{shortname} } @user_shortnames_and_ids;
+    my @table_header
+      = Tr(th([ 'Position',
+                'Artist',
+                'Song',
+                'Album',
+                'Year',
+                'Normalized rating',
+                'Rating',
+                'Normalized rating standard deviation',
+                'Rating standard deviation',
+                @userlist ]));
+
+    my %ratings_by_user_and_song;
+    my %normalized_ratings_by_user_and_song;
+    foreach my $r (@$song_ratings) {
+      $ratings_by_user_and_song{ $r->{user_id} }{ $r->{song_id} }
+        = $r->{song_rating_value_value};
+      $normalized_ratings_by_user_and_song{ $r->{user_id} }{ $r->{song_id} }
+        = $r->{song_rating_normalized_value_value};
+    }
 
     my $title = t('Listening session analysis for "[_1]".',
                   e($listening_session->{listening_session_name}));
 
     my @song_htmls
-      = map { tablerow_analysis_song($_, \%username_short_forms) }
-          @$songs_with_positions;
-    my $content = p($title) . table(@song_htmls);
+      = map {
+          tablerow_analysis_song($_,
+                                 \%ratings_by_user_and_song,
+                                 \%normalized_ratings_by_user_and_song,
+                                 \@user_shortnames_and_ids);
+        } @$songs_with_positions;
+
+    my $content = p($title) . table({ -style => 'text-align: center;' },
+                                    @table_header, @song_htmls);
 
     page($title, $content);
   }
 
   sub tablerow_analysis_song {
-    my ($song) = @_;
+    my ($song, $ratings_by_user_and_song, $normalized_ratings_by_user_and_song,
+      $user_shortnames_and_ids) = @_;
+
+    my $song_id = $song->{song_id};
 
     my $color_for_normalized_value
       = color_for_rating_value($song->{song_normalized_rating_value_avg},
-                               0.5);
+                               0.7);
+
+    my @user_ratings
+      = map {
+          my $user_id = $_->{user_id};
+          my $rating = $ratings_by_user_and_song->{ $user_id }{ $song_id };
+          my $norm_rating
+            = $normalized_ratings_by_user_and_song->{ $user_id }{ $song_id };
+          my $color = color_for_rating_value($norm_rating, 0.7);
+          td({ -style => "background-color: $color;" },
+             defined($rating) && defined($norm_rating)
+               ? sprintf('%.3f (%.1f)', $norm_rating, $rating)
+               : '&mdash;')
+        } @$user_shortnames_and_ids;
 
     Tr({ -style => "background-color: $color_for_normalized_value;" },
        td($song->{song_position}),
        td($song->{artist_name}),
        td($song->{song_name}),
        td($song->{album_name}),
+       td($song->{album_year}),
        td(sprintf('%.3f', $song->{song_normalized_rating_value_avg})),
        td(sprintf('%.3f', $song->{song_rating_value_avg})),
        td(sprintf('%.3f', $song->{song_normalized_rating_value_stdev})),
-       td(sprintf('%.3f', $song->{song_rating_value_stdev})));
+       td(sprintf('%.3f', $song->{song_rating_value_stdev})),
+       @user_ratings);
   }
 
   sub page_listening_session_overview {
