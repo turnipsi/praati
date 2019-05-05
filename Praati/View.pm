@@ -146,8 +146,8 @@ package Praati::View {
 
 div.ratings_for_song {
   float:         left;
-  padding-right: 1em;
   min-width:     40em;
+  padding-right: 1em;
 }
 
 table.ratings_for_song {
@@ -163,7 +163,7 @@ table.ratings_for_song {
 }
 
 .user_song_rating_value_and_name {
-  margin: 0;
+  margin:        0;
   padding-left:  0.1em;
   padding-right: 0.1em;
 }
@@ -191,6 +191,10 @@ table.ratings_for_song {
   padding-top:    0.2em;
 }
 
+.album_chart {
+  padding: 0.5em;
+}
+
 #album_chart_table td {
   border-style: solid;
   border-width: 0.1em;
@@ -205,11 +209,26 @@ table.ratings_for_song {
   border-collapse: collapse;
 }
 
+.user_rating_correlations {
+  padding: 0.5em;
+}
+
 .user_rating_correlations td {
   border-style: solid;
   border-width: 0.1em;
   padding:      0.2em;
   text-align:   center;
+}
+
+#final_ratings {
+  border-collapse: collapse;
+  border-style:    solid;
+  text-align:      center;
+}
+
+#final_ratings_analysis {
+  display:    flex;
+  text-align: center;
 }
 
 .no_correlation { background-color: #808080; }
@@ -523,14 +542,15 @@ EOF
 
     my $content
       = p($title)
-        . table({ -style => 'text-align: center;' },
+        . table({ -id => 'final_ratings' },
                 @table_header, @song_htmls)
-        . div({ -class => 'user_rating_correlations' },
-              t('Rating correlations')
-              . $table_user_rating_correlations)
-        . div({ -class => 'album_chart' },
-              t('Album chart')
-              . $table_album_chart);
+        . div({ -id => 'final_ratings_analysis' },
+              div({ -class => 'user_rating_correlations' },
+                  t('Rating correlations')
+                  . $table_user_rating_correlations)
+              . div({ -class => 'album_chart' },
+                    t('Album chart')
+                    . $table_album_chart));
 
     page($title, $content);
   }
