@@ -974,12 +974,14 @@ EOF
               e('<-- '))
           : '';
 
-    my $next_link_html
-      = $next_link
-          ? a({ -id    => 'next_song_link',
-                -href  => $next_link },
-              e(' -->'))
-          : '';
+    unless ($next_link) {
+      my $urlpath = 'listening_sessions/analysis?listening_session_id=%d';
+      $next_link = link_to(sprintf($urlpath,
+                                   uri_escape($listening_session_id)));
+    }
+    my $next_link_html = a({ -id    => 'next_song_link',
+                             -href  => $next_link },
+                           e(' -->'));
 
     table({ -class => 'rating_stats' },
           Tr([ td({ -class => 'song_normalized_rating_value_avg',
