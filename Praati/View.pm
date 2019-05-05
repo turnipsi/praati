@@ -397,6 +397,11 @@ EOF
 
     my $album_chart
       = table_album_chart($listening_session_id, $event_number);
+    my $album_chart_div
+      = div({ -class => 'album_chart' },
+            a({ -href => '#', -id => 'album_chart_toggle' },
+              t('Album chart')),
+            $album_chart);
 
     my $header_title = t('Listening event for [_1]',
                          $event_and_song->{song_name});
@@ -407,7 +412,7 @@ EOF
 
     my $stats_div = div({ -id => 'cumulative_panel_statistics' },
                         $user_rating_correlations_div
-                        . $album_chart);
+                        . $album_chart_div);
 
     query(q{ update listening_events
                set listening_event_shown = listening_event_shown + 1
@@ -513,6 +518,8 @@ EOF
     my $table_user_rating_correlations
       = table_user_rating_correlations($listening_session_id,
                                        $last_event_number);
+    my $table_album_chart = table_album_chart($listening_session_id,
+                                              $last_event_number);
 
     my $content
       = p($title)
@@ -520,7 +527,10 @@ EOF
                 @table_header, @song_htmls)
         . div({ -class => 'user_rating_correlations' },
               t('Rating correlations')
-              . $table_user_rating_correlations);
+              . $table_user_rating_correlations)
+        . div({ -class => 'album_chart' },
+              t('Album chart')
+              . $table_album_chart);
 
     page($title, $content);
   }
@@ -1035,18 +1045,15 @@ EOF
              $listening_session_id,
              $event_number);
 
-    div({ -class => 'album_chart' },
-        a({ -href => '#', -id => 'album_chart_toggle' },
-          t('Album chart')),
-        table({ -id => 'album_chart_table' },
-              map {
-                my $rating_color
-                  = color_for_rating_value($_->{album_rating}, 1.0);
-                Tr({ -style => "background-color: $rating_color;" },
-                   td([ e($_->{album_year}),
-                        e($_->{album_name}),
-                        sprintf('%.2f', $_->{album_rating}) ]));
-              } @$user_rating_counts));
+    table({ -id => 'album_chart_table' },
+          map {
+            my $rating_color
+              = color_for_rating_value($_->{album_rating}, 1.0);
+            Tr({ -style => "background-color: $rating_color;" },
+               td([ e($_->{album_year}),
+                    e($_->{album_name}),
+                    sprintf('%.2f', $_->{album_rating}) ]));
+          } @$user_rating_counts);
   }
 
   sub table_user_rating_counts {
