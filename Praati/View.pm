@@ -389,6 +389,11 @@ EOF
 
     my $user_rating_correlations
       = table_user_rating_correlations($listening_session_id, $event_number);
+    my $user_rating_correlations_div
+      = div({ -class => 'user_rating_correlations' },
+            a({ -href => '#', -id => 'user_rating_correlations_toggle' },
+              t('Rating correlations')),
+            $user_rating_correlations);
 
     my $album_chart
       = table_album_chart($listening_session_id, $event_number);
@@ -401,7 +406,7 @@ EOF
                            -title  => "Praati - $header_title");
 
     my $stats_div = div({ -id => 'cumulative_panel_statistics' },
-                        $user_rating_correlations
+                        $user_rating_correlations_div
                         . $album_chart);
 
     query(q{ update listening_events
@@ -501,8 +506,21 @@ EOF
                                  \@user_shortnames_and_ids);
         } @$songs_with_positions;
 
-    my $content = p($title) . table({ -style => 'text-align: center;' },
-                                    @table_header, @song_htmls);
+    my $last_event_number = one_value(q{ select max(listening_event_number)
+                                           from listening_events
+                                         where listening_session_id = ?; },
+                                      $listening_session_id);
+    my $table_user_rating_correlations
+      = table_user_rating_correlations($listening_session_id,
+                                       $last_event_number);
+
+    my $content
+      = p($title)
+        . table({ -style => 'text-align: center;' },
+                @table_header, @song_htmls)
+        . div({ -class => 'user_rating_correlations' },
+              t('Rating correlations')
+              . $table_user_rating_correlations);
 
     page($title, $content);
   }
@@ -989,15 +1007,12 @@ EOF
     my $empty_cell = td({ -class => 'no_correlation' },
                         '&mdash;');
 
-    div({ -class => 'user_rating_correlations' },
-        a({ -href => '#', -id => 'user_rating_correlations_toggle' },
-          t('Rating correlations')),
-        table({ -id => 'user_rating_correlations_table' },
-              Tr([ map {
-                     my $i = $_;
-                     concat(map { $table[$i][$_] // $empty_cell }
-                              (0 .. scalar(@userlist)));
-                   } (0 .. scalar(@userlist))])));
+    table({ -id => 'user_rating_correlations_table' },
+          Tr([ map {
+                 my $i = $_;
+                 concat(map { $table[$i][$_] // $empty_cell }
+                          (0 .. scalar(@userlist)));
+               } (0 .. scalar(@userlist))]));
   }
 
   sub table_album_chart {
