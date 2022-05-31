@@ -20,6 +20,8 @@ use strict;
 use utf8;
 use warnings FATAL => qw(all);
 
+use Encode;
+
 package Praati::Controller {
   use Exporter qw(import);
   BEGIN {
@@ -541,7 +543,7 @@ package Praati::Controller::Response {
     my ($self, $q) = @_;
 
     my @header_args = (
-      -charset => 'utf-8',
+      -charset => 'UTF-8',
       defined($self->cookie) ? (-cookie => $self->cookie) : (),
       defined($self->status) ? (-status => $self->status) : (),
       defined($self->type  ) ? (-type   => $self->type  ) : (),
@@ -568,7 +570,9 @@ package Praati::Controller::Response {
 
     confess('Not a sensible response object') unless defined $content;
 
-    print $content;
+    # FastCGI is not unicode aware
+    my $utf8 = Encode::find_encoding('UTF-8');
+    print $utf8->encode($content, Encode::FB_DEFAULT);
   }
 
   # send file in chunks so that sending starts quickly
