@@ -33,7 +33,7 @@ BEGIN {
     our $DB_file_path       = "${DB_dir}/praati.sqlite3";
     our $FCGI_socket_path   = '/var/www/run/praati/praati.sock';
     our $Music_path         = "${DB_dir}/music";
-    our $User_session_hours = 12;
+    our $User_session_hours = 336;
   }
 }
 
