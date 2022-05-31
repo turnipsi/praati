@@ -293,8 +293,9 @@ EOF
 
     confess('No title set for page') unless $title;
 
-    my @start_html_opts = (-style => { -code => css(), },
-                           -title => "Praati - $title",
+    my @start_html_opts = (-encoding => 'UTF-8',
+                           -style    => { -code => css(), },
+                           -title    => "Praati - $title",
                            @opts);
 
     start_html(@start_html_opts)
@@ -425,9 +426,10 @@ EOF
     my $header_title = t('Listening event for [_1]',
                          $event_and_song->{song_name});
     my $js = Praati::View::JS::panel_listening_event_js();
-    my @start_html_opts = (-script => $js,
-                           -style  => { -code => css(), },
-                           -title  => "Praati - $header_title");
+    my @start_html_opts = (-encoding => 'UTF-8',
+                           -script   => $js,
+                           -style    => { -code => css(), },
+                           -title    => "Praati - $header_title");
 
     my $stats_div = div({ -id => 'cumulative_panel_statistics' },
                         $user_rating_correlations_div
@@ -628,8 +630,9 @@ EOF
     # refresh every $login_refresh_seconds to get a new session cookie
     # (wipes the form as a side effect)
     my @start_html_options = (
-      -head => meta({ -http_equiv => 'refresh',
-                      -content    => $login_refresh_seconds }),
+      -encoding => 'UTF-8',
+      -head     => meta({ -http_equiv => 'refresh',
+                          -content    => $login_refresh_seconds }),
     );
 
     my $page
