@@ -1,5 +1,7 @@
 =pod
 
+=encoding UTF-8
+
 =head1 Praati
 
 Praati is web software for criticizing and listening music within
