@@ -106,7 +106,7 @@ Setup C</var/www/run/praati> for FastCGI socket:
 
 Setup C</etc/rc.d/praati> like this:
 
-    #!/bin/sh
+    #!/bin/ksh
 
     daemon="/usr/local/bin/praati"
     daemon_user="_praati"
