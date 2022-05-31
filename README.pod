@@ -26,13 +26,12 @@ in Finnish (but you may tweak it to English easily).  You have to
 figure out on your own how to install it and use it.  If you really
 need help, contact the author.
 
-This software has been written by Juha Erkkilä <je@turnipsi.no-ip.org>.
-Patches (portability, security, features, whatever) are mostly
-welcome.
+This software has been written by Juha Erkkilä <juhaerk@icloud.com>.
+Patches (portability, security, features, whatever) are mostly welcome.
 
 =head2 Installation instructions
 
-Here are installation instructions for OpenBSD 6.2 (IN PROGRESS).
+Here are installation instructions for OpenBSD 7.1 (IN PROGRESS).
 
 Install these packages that are runtime dependencies:
 
