@@ -274,7 +274,9 @@ EOF
 
     my $pages_by_role = {
       admin     => [ qw(main          panels       logout) ],
-      anonymous => [ qw(main new_user        login       ) ],
+      anonymous => [ qw(main                 login       ) ],
+    # new_user is disabled
+    # anonymous => [ qw(main new_user        login       ) ],
       critic    => [ qw(main          panels       logout) ],
     };
 

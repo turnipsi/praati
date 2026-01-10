@@ -138,9 +138,10 @@ package Praati::Controller {
       m|^/main$|
         ? main_controller() # XXX do we need this at all?
         :
-      m|^/new_user$|
-        ? new_user_controller()
-        :
+# disabled
+#     m|^/new_user$|
+#       ? new_user_controller()
+#       :
       m|^/panels$|
         ? do {
             restrict_to_roles( qw(admin critic) );
